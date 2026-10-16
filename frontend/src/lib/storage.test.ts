@@ -36,3 +36,12 @@ test("corrupt JSON falls back to defaults", () => {
   expect(loadDraft()).toEqual(emptyDraft);
   expect(loadSettings(sizes[0])).toEqual(defaultSettings(sizes[0]));
 });
+
+test("all sizes default to no phones; Chinese vertical enables postcode boxes", () => {
+  for (const size of sizes) {
+    const s = defaultSettings(size);
+    expect(s.phones).toBe(false);
+    expect(s.boxes).toBe(size.id === "chinese-vertical");
+    expect(s.spacing / 0.05).toBeCloseTo(Math.round(s.spacing / 0.05));
+  }
+});

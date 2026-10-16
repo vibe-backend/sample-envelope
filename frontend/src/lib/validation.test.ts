@@ -2,11 +2,10 @@ import { expect, test } from "vitest";
 import { emptyDraft, validate } from "./validation";
 import { t } from "../i18n/zh-Hant";
 const valid = { ...emptyDraft, ...t.sampleData };
-test("requires recipient name and both addresses", () => {
+test("requires recipient name and address; sender is optional", () => {
   expect(Object.keys(validate(emptyDraft))).toEqual([
     "recipientName",
     "recipientAddress",
-    "senderAddress",
   ]);
   expect(validate(valid)).toEqual({});
 });

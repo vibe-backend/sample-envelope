@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "./components/ui/dialog";
+import { fitFontSize } from "./lib/overflow";
+import type { Block } from "./components/Envelope";
 import { Envelope } from "./components/Envelope";
 import { t } from "./i18n/zh-Hant";
-import { sizes, orientedSize, type EnvelopeSize } from "./lib/sizes";
+import { sizes, orientedSize, pageRule, type EnvelopeSize } from "./lib/sizes";
 import { mmToPx } from "./lib/units";
 import { emptyDraft, validate, type Draft } from "./lib/validation";
 import {
+  draftKey, settingsKey,
   defaultSettings,
   loadDraft,
   saveDraft,
@@ -33,10 +37,13 @@ function Preview({
   draft,
   settings,
   thumbnail = false,
+  onOverflow, onMove,
 }: {
   draft: Draft;
   settings: Settings;
   thumbnail?: boolean;
+  onOverflow?: (blocks: Block[]) => void;
+  onMove?: (block: Block, x: number, y: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(600);
@@ -56,7 +63,7 @@ function Preview({
   const scale = Math.min(
     1,
     (available - 32) / mmToPx(widthMm),
-    (thumbnail ? 190 : 650) / mmToPx(heightMm),
+    (thumbnail ? (window.innerWidth < 520 ? 290 : 190) : window.innerWidth < 800 ? window.innerHeight * 0.32 : 650) / mmToPx(heightMm),
   );
   return (
     <div ref={ref} className={thumbnail ? "thumbnail" : "preview-area"}>
@@ -71,7 +78,7 @@ function Preview({
           className="scaled-envelope"
           style={{ transform: `scale(${scale})` }}
         >
-          <Envelope draft={draft} settings={settings} />
+          <Envelope draft={draft} settings={settings} onOverflow={onOverflow} onMove={onMove} />
         </div>
       </div>
       {!thumbnail && (
@@ -87,38 +94,74 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
   useEffect(() => {
     saveSettings(size.id, s);
   }, [size.id, s]);
+  const [overflow, setOverflow] = useState<Block[]>([]);
+  const reportOverflow = useCallback((blocks: Block[]) => setOverflow(prev => prev.join() === blocks.join() ? prev : blocks), []);
+  const [dialog, setDialog] = useState(false);
+  const [skip, setSkip] = useState(false);
+  const [kaiMissing, setKaiMissing] = useState(false);
+  useEffect(() => {
+    const sync = (e: StorageEvent) => { if (e.key === settingsKey(size.id) || e.key === null) setS(loadSettings(size)); };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [size]);
+  useEffect(() => {
+    if (s.font !== "kai") return;
+    const names = ["BiauKai", "DFKai-SB", "KaiTi", "STKaiti", "Kaiti TC"];
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const available = names.some(name => {
+      if (document.fonts?.check(`12px "${name}"`)) {
+        if (!ctx) return true;
+        ctx.font = "12px serif";
+        const baseline = ctx.measureText("漢字ABC").width;
+        ctx.font = `12px "${name}",serif`;
+        return ctx.measureText("漢字ABC").width !== baseline;
+      }
+      return false;
+    });
+    void Promise.resolve().then(() => setKaiMissing(!available));
+  }, [s.font]);
+  const print = () => {
+    try { if (localStorage.getItem("sample-envelope:skip-print-dialog") === "true") { window.print(); return; } } catch { /* unavailable */ }
+    setDialog(true);
+  };
   const oriented = orientedSize(s, s.orientation);
   useEffect(() => {
     const style = document.createElement("style");
     style.id = "page-size";
-    style.textContent = `@page { size: ${oriented.widthMm}mm ${oriented.heightMm}mm; margin: 0 }`;
+    style.textContent = pageRule({widthMm: oriented.widthMm, heightMm: oriented.heightMm});
     document.head.append(style);
     return () => style.remove();
   }, [oriented.widthMm, oriented.heightMm]);
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setS((prev) => ({ ...prev, [key]: value }));
-  const number = (
-    key: keyof Settings,
-    label: string,
-    min: number,
-    max: number,
-    step = 1,
-  ) => (
-    <div className="field" key={key}>
-      <Label htmlFor={key}>{label}</Label>
-      <Input
-        id={key}
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={s[key] as number}
-        onChange={(e) =>
-          update(key, Math.max(min, Math.min(max, Number(e.target.value))))
-        }
-      />
-    </div>
-  );
+  const [raw, setRaw] = useState<Partial<Record<keyof Settings, string>>>({});
+  const number = (key: keyof Settings, label: string, min: number, max: number, step = 1, block?: Block) => {
+    const accessibleName = block ? `${t[`${block}Block`]} ${label}` : label;
+    const value = raw[key] ?? String(s[key]);
+    const invalid = value === "" || !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max;
+    const apply = (text: string) => {
+      setRaw(prev => ({...prev, [key]: text}));
+      if (text === "" || !Number.isFinite(Number(text)) || Number(text) < min || Number(text) > max) return;
+      const value = Number(text);
+      setS(prev => {
+        const next = {...prev, [key]: value};
+        if (key === "widthMm" || key === "heightMm") next.orientation = next.widthMm <= next.heightMm ? "portrait" : "landscape";
+        return next;
+      });
+    };
+    return <div className="field" key={key}>
+      <Label htmlFor={key}>{label} <span>{min}–{max}{key.endsWith("Size") ? " pt" : ""}</span></Label>
+      <div className="number-control">
+        <button type="button" aria-label={`${accessibleName} ${t.decrease}`} onClick={() => apply(String(Number(value) - step))}>−</button>
+        <Input id={key} aria-label={accessibleName} type="number" min={min} max={max} step={step} value={value} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : undefined} onChange={e => apply(e.target.value)} />
+        {key.endsWith("Size") && <span>pt</span>}
+        <button type="button" aria-label={`${accessibleName} ${t.increase}`} onClick={() => apply(String(Number(value) + step))}>+</button>
+      </div>
+      {invalid && <p className="error" id={`${key}-error`}>{t.rangeError}</p>}
+    </div>;
+  };
+  const move = (p: Block, x: number, y: number) => { setRaw({}); setS(prev => ({...prev, [`${p}X`]: x, [`${p}Y`]: y})); };
   return (
     <>
       <div className="page-heading">
@@ -126,14 +169,18 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           <p className="eyebrow">03 / {size.label}</p>
           <h1>{t.editor}</h1>
         </div>
-        <Button onClick={() => window.print()}>{t.print} ↗</Button>
+        <Button onClick={print}>{t.print} ↗</Button>
       </div>
       <div className="editor-layout">
         <section className="preview-panel">
-          <Preview draft={draft} settings={s} />
-          <p className="hint">{t.printTip}</p>
+          <Preview draft={draft} settings={s} onOverflow={reportOverflow} onMove={move} />
+          <div className="print-callout" role="note">{t.printTip}</div>
         </section>
         <aside className="panel controls">
+          <div className="dimensions">
+            {number("widthMm", t.width, 50, 500)}
+            {number("heightMm", t.height, 50, 500)}
+          </div>
           <div className="field">
             <Label htmlFor="writingMode">{t.direction}</Label>
             <select
@@ -153,7 +200,12 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
               id="orientation"
               value={s.orientation}
               onChange={(e) =>
-                update("orientation", e.target.value as Settings["orientation"])
+                setS(prev => {
+                  const orientation = e.target.value as Settings["orientation"];
+                  const dims = orientedSize(prev, orientation);
+                  setRaw({});
+                  return {...prev, ...dims, orientation};
+                })
               }
             >
               <option value="portrait">{t.portrait}</option>
@@ -176,35 +228,45 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
               ))}
             </select>
           </div>
+          {s.font === "kai" && kaiMissing && <p className="hint">{t.kaiMissing}</p>}
           {(["name", "address", "sender"] as const).map((p) => (
             <fieldset key={p}>
               <legend>{t[`${p}Block`]}</legend>
               <div className="control-grid">
-                {number(`${p}Size`, t.fontSize, 6, 72)}
-                {number(`${p}X`, t.x, -500, 500)}
-                {number(`${p}Y`, t.y, -500, 500)}
+                {number(`${p}Size`, t.fontSize, 6, 72, 0.5, p)}
+                <div className="wide"><b>{t.position}</b><p className="hint">{t.positionHelp}</p></div>
+                {number(`${p}X`, t.x, -500, 500, 1, p)}
+                {number(`${p}Y`, t.y, -500, 500, 1, p)}
               </div>
+              <div className="actions">
+                <Button variant="ghost" onClick={() => move(p, 0, 0)}>{t.center}</Button>
+                <Button variant="ghost" onClick={() => { const defaults = defaultSettings(size); setRaw({}); setS(prev => ({...prev, [`${p}Size`]: defaults[`${p}Size`], [`${p}X`]: 0, [`${p}Y`]: 0})); }}>{t.resetBlock}</Button>
+              </div>
+              {overflow.includes(p) && <div role="status" aria-live="polite" className="error">{t[`${p}Block`]}：{t.overflow}
+                <Button variant="outline" onClick={() => {
+                  const el = document.querySelector<HTMLElement>(`.preview-area [data-block="${p}"]`);
+                  if (!el) return;
+                  const fitted = fitFontSize(s[`${p}Size`], 6, value => { el.style.fontSize = `${value}pt`; return el; });
+                  setRaw({}); update(`${p}Size`, fitted);
+                }}>{t.autoFit}</Button>
+              </div>}
             </fieldset>
           ))}
           {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "boxes"] as const).map((k) => (
+          {(["phones", "phoneGroups", "boxes"] as const).map((k) => (
             <label className="check" key={k}>
               <input
                 type="checkbox"
+                disabled={k === "phones" && !draft.recipientPhone.trim() && !draft.senderPhone.trim()}
                 checked={s[k]}
                 onChange={(e) => update(k, e.target.checked)}
               />
               {t[k]}
             </label>
           ))}
-          {size.id === "custom" && (
-            <div className="control-grid">
-              {number("widthMm", t.width, 50, 500)}
-              {number("heightMm", t.height, 50, 500)}
-            </div>
-          )}
+          {!draft.recipientPhone.trim() && !draft.senderPhone.trim() && <p className="hint">{t.noPhones}</p>}
           <div className="actions">
-            <Button variant="outline" onClick={() => setS(resetSettings(size))}>
+            <Button variant="outline" onClick={() => { setRaw({}); setS(resetSettings(size)); }}>
               {t.reset}
             </Button>
             <Button variant="ghost" onClick={() => go("/gallery")}>
@@ -213,6 +275,15 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           </div>
         </aside>
       </div>
+      <Dialog open={dialog} onOpenChange={setDialog}>
+        <DialogContent showCloseButton={false}>
+          <DialogTitle>{t.printHeading}</DialogTitle>
+          <DialogDescription>{t.printTip}</DialogDescription>
+          <ol className="print-steps"><li>{t.printPaper}：{oriented.widthMm} × {oriented.heightMm} mm</li>{t.printSteps.map(step => <li key={step}>{step}</li>)}</ol>
+          <label className="check"><input type="checkbox" checked={skip} onChange={e => {setSkip(e.target.checked); try {localStorage.setItem("sample-envelope:skip-print-dialog", String(e.target.checked));} catch { /* unavailable */ }}} />{t.skipPrint}</label>
+          <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>{t.cancel}</Button><Button onClick={() => {setDialog(false); window.print();}}>{t.print}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -223,6 +294,11 @@ export default function App() {
   useEffect(() => {
     saveDraft(draft);
   }, [draft]);
+  useEffect(() => {
+    const sync = (e: StorageEvent) => { if (e.key === draftKey || e.key === null) setDraft(loadDraft()); };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
   const errors = validate(draft);
   const editorSize = hash.startsWith("#/editor/")
     ? sizes.find((s) => s.id === hash.slice(9))
@@ -267,12 +343,14 @@ export default function App() {
       <select
         id={key}
         value={draft[key]}
+        aria-describedby={key === "opening" ? "opening-help" : undefined}
         onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
       >
         {values.map((v) => (
           <option key={v}>{v}</option>
         ))}
       </select>
+      {key === "opening" && <p id="opening-help" className="hint">{t.openingHelp}</p>}
     </div>
   );
   return (
@@ -308,6 +386,7 @@ export default function App() {
               <Button
                 variant="outline"
                 onClick={() => {
+                  if (Object.keys(draft).some(key => draft[key as keyof Draft] !== emptyDraft[key as keyof Draft] && draft[key as keyof Draft].trim()) && !window.confirm(t.sampleConfirm)) return;
                   setDraft({ ...emptyDraft, ...t.sampleData });
                   setSubmitted(false);
                 }}
@@ -348,7 +427,7 @@ export default function App() {
                   <div className="fields">
                     {field("senderName", t.name)}
                     {field("senderPostcode", t.postcode)}
-                    {field("senderAddress", t.address, true)}
+                    {field("senderAddress", t.address)}
                     {field("senderPhone", t.phone)}
                   </div>
                 </section>

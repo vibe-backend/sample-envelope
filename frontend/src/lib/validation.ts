@@ -18,7 +18,6 @@ export function validate(draft: Draft): Partial<Record<keyof Draft, string>> {
   for (const key of [
     "recipientName",
     "recipientAddress",
-    "senderAddress",
   ] as const)
     if (!draft[key].trim()) errors[key] = t.requiredError;
   if (draft.recipientTitle === t.titles[6] && !draft.customTitle.trim())
