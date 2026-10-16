@@ -70,6 +70,24 @@ test("vertical recipient and sender have separate address and phone columns", ()
   unmount();
 });
 
+test.each([false, true])("vertical addresses share inline postcode, single space, and address structure (boxes: %s)", (boxes) => {
+  const address = "新竹市中正路12號";
+  const draft = {...emptyDraft, recipientPostcode: "300", senderPostcode: "300", recipientAddress: address, senderAddress: address};
+  const {container, unmount} = render(<Envelope draft={draft} settings={{...defaultSettings(sizes[0], draft), writingMode: "vertical-rl", showAddressLabel: false, boxes}} />);
+  const recipient = container.querySelector(".recipient-address-column")!;
+  const sender = container.querySelector(".sender-address-column")!;
+  expect(sender.innerHTML).toBe(recipient.innerHTML);
+  for (const column of [recipient, sender]) {
+    expect(column.textContent).toBe(`300 ${address}`);
+    expect([...column.children].map(el => el.className)).toEqual(["address-postcode", "address-text"]);
+    const postcode = column.children[0];
+    expect(postcode.lastChild).toBe(column.querySelector(".postcode-space"));
+    expect(postcode.lastChild?.textContent).toBe(" ");
+    expect(column.querySelector(".address-text")?.textContent).toBe(address);
+  }
+  unmount();
+});
+
 test("vertical options hide address label and enable boxes for both postcodes", () => {
   const draft = {...emptyDraft, ...t.sampleData};
   const {container, unmount} = render(<Envelope draft={draft} settings={{...defaultSettings(sizes[0], draft), boxes: true, showAddressLabel: false}} />);
