@@ -1,0 +1,11 @@
+{
+  // Tests run only on Node 22 (vitest), so they may use ES2022 APIs such as Array.prototype.at.
+  // App code stays on ES2020 (tsconfig.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "ES2022", "DOM", "DOM.Iterable"],
+    "types": ["@rsbuild/core/types", "node"]
+  },
+  "include": ["src", "vitest.config.ts"],
+  "exclude": []
+}
