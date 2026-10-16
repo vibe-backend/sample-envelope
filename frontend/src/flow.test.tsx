@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import App from "./App";
 import { t } from "./i18n/zh-Hant";
+import { sizes } from "./lib/sizes";
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -113,4 +114,26 @@ test("phone display is off and disabled without phone data", () => {
   const checkbox = screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement;
   expect(checkbox.checked).toBe(false);
   expect(checkbox.disabled).toBe(true);
+});
+
+test("letter-spacing steps display decimal values and remain valid", () => {
+  window.location.hash = "/editor/custom";
+  render(<App />);
+  const input = screen.getByRole("spinbutton", {name: t.spacing}) as HTMLInputElement;
+  expect(input.value).toBe("0.1");
+  expect(input.checkValidity()).toBe(true);
+  fireEvent.click(screen.getByRole("button", {name: `${t.spacing} ${t.increase}`}));
+  expect(input.value).toBe("0.15");
+  expect(input.checkValidity()).toBe(true);
+  fireEvent.click(screen.getByRole("button", {name: `${t.spacing} ${t.decrease}`}));
+  expect(input.value).toBe("0.1");
+  expect(input.checkValidity()).toBe(true);
+});
+
+test.each(sizes)("all default steppers are valid for $id", ({id}) => {
+  window.location.hash = `/editor/${id}`;
+  render(<App />);
+  for (const input of screen.getAllByRole<HTMLInputElement>("spinbutton")) {
+    expect(input.checkValidity(), input.id).toBe(true);
+  }
 });
