@@ -64,10 +64,10 @@ function Preview({
   const scale = Math.min(
     1,
     (available - 32) / mmToPx(widthMm),
-    (thumbnail ? (window.innerWidth < 520 ? 290 : 190) : window.innerWidth < 800 ? window.innerHeight * 0.32 : 650) / mmToPx(heightMm),
+    (thumbnail ? 290 : window.innerWidth < 800 ? window.innerHeight * 0.32 : 650) / mmToPx(heightMm),
   );
   return (
-    <div ref={ref} className={thumbnail ? "thumbnail" : "preview-area"}>
+    <div ref={ref} className={thumbnail ? "thumbnail" : "preview-area"} aria-hidden={thumbnail ? true : undefined}>
       <div
         className="preview-frame"
         style={{
@@ -476,7 +476,10 @@ export default function App() {
                     thumbnail
                   />
                   <div className="card-caption">
-                    <strong>{size.label}</strong>
+                    <div className="card-label">
+                      <strong>{size.label}</strong>{" "}
+                      <span>{size.id === "custom" ? t.galleryCustom : `${t.galleryOrientation[size.defaultOrientation]}・${t.galleryWritingMode[size.defaultWritingMode]}`}</span>
+                    </div>
                     <span>
                       {size.widthMm} × {size.heightMm} mm
                     </span>

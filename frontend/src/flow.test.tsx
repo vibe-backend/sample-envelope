@@ -9,6 +9,7 @@ import {
 import App from "./App";
 import { t } from "./i18n/zh-Hant";
 import { sizes } from "./lib/sizes";
+import { mmToPx } from "./lib/units";
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -135,5 +136,34 @@ test.each(sizes)("all default steppers are valid for $id", ({id}) => {
   render(<App />);
   for (const input of screen.getAllByRole<HTMLInputElement>("spinbutton")) {
     expect(input.checkValidity(), input.id).toBe(true);
+  }
+});
+
+
+test("gallery cards describe presets and hide non-focusable true-size previews", () => {
+  window.location.hash = "/gallery";
+  const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(410);
+  try {
+    render(<App />);
+    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*105 × 220/})).toBeTruthy();
+    expect(screen.getByRole("button", {name: /DL.*橫式・西式橫書/})).toBeTruthy();
+    for (const size of sizes) {
+      const descriptor = size.id === "custom" ? "自訂尺寸" : size.id === "chinese-vertical" ? "直式・中文直書" : "橫式・西式橫書";
+      const card = screen.getByRole("button", {name: `${size.label} ${descriptor} ${size.widthMm} × ${size.heightMm} mm`});
+      const preview = card.querySelector<HTMLElement>(".thumbnail")!;
+      expect(preview.getAttribute("aria-hidden")).toBe("true");
+      expect(preview.querySelector("[tabindex], button, input, select, textarea, a[href]")).toBeNull();
+      if (size.id === "c4") {
+        const envelope = preview.querySelector<HTMLElement>(".envelope")!;
+        expect(envelope.style.width).toBe(`${324}mm`);
+        expect(envelope.style.height).toBe(`${229}mm`);
+        const scaled = preview.querySelector<HTMLElement>(".scaled-envelope")!;
+        const scale = Number(scaled.style.transform.match(/scale\(([^)]+)\)/)![1]);
+        expect(scale).toBeGreaterThanOrEqual(0.3);
+        expect(scale).toBeCloseTo((410 - 32) / mmToPx(324));
+      }
+    }
+  } finally {
+    width.mockRestore();
   }
 });

@@ -42,6 +42,9 @@ export const t = {
   requiredError: "請填寫此欄位",
   postcodeError: "請輸入 3–6 位數字",
   phoneError: "電話僅可包含數字、空格及 + - ( )",
+  galleryCustom: "自訂尺寸",
+  galleryOrientation: { portrait: "直式", landscape: "橫式" },
+  galleryWritingMode: { "vertical-rl": "中文直書", "horizontal-tb": "西式橫書" },
   gallery: "選一只合適的信封",
   galleryHint: "所有預覽均使用您填寫的資料。點選信封以調整版面。",
   sizes: {
