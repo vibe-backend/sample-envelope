@@ -6,6 +6,7 @@ import { orientedSize } from "../lib/sizes";
 import { mmToCss } from "../lib/units";
 import { t } from "../i18n/zh-Hant";
 import { isOverflowing } from "../lib/overflow";
+import { verticalAddressArea } from "../lib/layout";
 export type Block = "name" | "address" | "sender";
 const fonts = {
   serif: '"Noto Serif TC","Songti TC","PMingLiU",serif',
@@ -84,8 +85,10 @@ export function Envelope({
     onPointerCancel: () => { drag.current = null; },
     onLostPointerCapture: () => { drag.current = null; },
   });
-  const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{part}</span>)}</span>;
+  const vertical = s.writingMode === "vertical-rl";
+  const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{vertical ? digitRuns(part) : part}</span>)}</span>;
   const size = orientedSize(s, s.orientation);
+  const addressArea = verticalAddressArea(size.heightMm);
   const block = (prefix: "name" | "address" | "sender"): CSSProperties => ({
     fontSize: `${s[`${prefix}Size`]}pt`,
     transform: `translate(${mmToCss(s[`${prefix}X`])}, ${mmToCss(s[`${prefix}Y`])})`,
@@ -120,16 +123,19 @@ export function Envelope({
           {postcode(d.recipientPostcode)}
         </div>
       )}
-      <div {...interactive("address")} className="recipient-address" style={block("address")}>
+      <div {...interactive("address")} className="recipient-address" style={{...block("address"), ...(vertical ? {top: mmToCss(addressArea.topMm), height: mmToCss(addressArea.heightMm)} : {})}}>
+        <span className="recipient-address-column">
+        {s.showAddressLabel && t.addressLabel}
         {!(s.boxes && s.writingMode === "horizontal-tb") && (
           <span className="address-postcode">
-            {postcode(d.recipientPostcode)}{" "}
+            {postcode(d.recipientPostcode)}<span className="postcode-space"> </span>
           </span>
         )}
         <span className="address-text">{digitRuns(d.recipientAddress)}</span>
+        </span>
         {s.phones && d.recipientPhone.trim() && (
           <small className="address-phone">
-            {" "}
+            {vertical ? t.phoneLabel : " "}
             {phone(d.recipientPhone)}
           </small>
         )}
@@ -145,10 +151,16 @@ export function Envelope({
         </span>
       </div>}
       {(d.senderName.trim() || d.senderAddress.trim()) && <div {...interactive("sender")} className="sender-block" style={block("sender")}>
-        {postcode(d.senderPostcode)}
-        <div>{digitRuns(d.senderAddress)}</div>
-        <div>{digitRuns(d.senderName)}</div>
-        {s.phones && d.senderPhone.trim() && <small>{phone(d.senderPhone)}</small>}
+        {vertical ? <>
+          {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
+          <span className="sender-address-column">{postcode(d.senderPostcode)}{" "}{digitRuns(d.senderAddress)}</span>
+          {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{t.phoneLabel}{phone(d.senderPhone)}</span>}
+        </> : <>
+          {postcode(d.senderPostcode)}
+          <div>{digitRuns(d.senderAddress)}</div>
+          <div>{digitRuns(d.senderName)}</div>
+          {s.phones && d.senderPhone.trim() && <small>{phone(d.senderPhone)}</small>}
+        </>}
       </div>}
     </div>
   );

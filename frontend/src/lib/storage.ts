@@ -16,17 +16,18 @@ export interface Settings {
   phoneGroups: boolean;
   phones: boolean;
   boxes: boolean;
+  showAddressLabel: boolean;
   spacing: number;
   widthMm: number;
   heightMm: number;
 }
-export const defaultSettings = (s: EnvelopeSize): Settings => ({
+export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Settings => ({
   orientation: s.defaultOrientation,
   writingMode: s.defaultWritingMode,
   font: "serif",
-  nameSize: 24,
+  nameSize: s.defaultWritingMode === "vertical-rl" ? 28 : 24,
   addressSize: 14,
-  senderSize: 10,
+  senderSize: s.defaultWritingMode === "vertical-rl" ? 13 : 10,
   nameX: 0,
   nameY: 0,
   addressX: 0,
@@ -34,13 +35,14 @@ export const defaultSettings = (s: EnvelopeSize): Settings => ({
   senderX: 0,
   senderY: 0,
   phoneGroups: false,
-  phones: false,
-  boxes: s.id === "chinese-vertical",
+  phones: !!(draft.recipientPhone.trim() || draft.senderPhone.trim()),
+  boxes: false,
+  showAddressLabel: s.defaultWritingMode === "vertical-rl",
   spacing: 0.1,
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v1:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v2:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
@@ -73,8 +75,8 @@ export function resetDraft() {
   saveDraft(emptyDraft);
   return { ...emptyDraft };
 }
-export function loadSettings(s: EnvelopeSize): Settings {
-  const d = defaultSettings(s),
+export function loadSettings(s: EnvelopeSize, draft: Draft = emptyDraft): Settings {
+  const d = defaultSettings(s, draft),
     v = load(settingsKey(s.id), d);
   if (
     !["portrait", "landscape"].includes(v.orientation) ||
@@ -91,8 +93,8 @@ export function loadSettings(s: EnvelopeSize): Settings {
 }
 export const saveSettings = (id: string, s: Settings) =>
   save(settingsKey(id), s);
-export function resetSettings(s: EnvelopeSize) {
-  const d = defaultSettings(s);
+export function resetSettings(s: EnvelopeSize, draft: Draft = emptyDraft) {
+  const d = defaultSettings(s, draft);
   saveSettings(s.id, d);
   return d;
 }

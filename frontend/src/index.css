@@ -330,27 +330,50 @@ footer {
 .sender-block {
   position: absolute;
 }
+/* Vertical columns follow the reference template, from right to left. */
+.vertical { text-orientation: upright; }
 .vertical .recipient-address {
-  right: 12%;
-  top: 9%;
-  max-height: 80%;
+  right: 12mm;
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
+}
+.vertical .recipient-address-column,
+.vertical .address-phone,
+.vertical .sender-name-column,
+.vertical .sender-address-column,
+.vertical .sender-phone-column {
+  display: block;
+  white-space: nowrap;
+}
+.vertical .postcode-space {
+  text-orientation: mixed;
 }
 .vertical .recipient-name {
-  right: 44%;
-  top: 28%;
-  height: 64%;
+  left: 50%;
+  top: 18%;
+  height: 67%;
+  width: 1.7em;
+  margin-left: -0.85em;
   display: flex;
-  gap: 12mm;
+  flex-direction: row;
   align-items: center;
 }
 .vertical .salutation {
-  font-size: 0.65em;
-  margin-top: auto;
+  position: absolute;
+  top: 77.6%;
+  left: 0;
+  width: 100%;
+  font-size: 0.785714em;
+  white-space: nowrap;
 }
 .vertical .sender-block {
-  left: 9%;
-  bottom: 8%;
-  max-height: 52%;
+  left: 12mm;
+  top: 45%;
+  height: calc(55% - 10mm);
+  display: flex;
+  flex-direction: column;
+  gap: 1mm;
 }
 .horizontal .sender-block {
   top: 8%;
@@ -494,12 +517,7 @@ footer {
 .horizontal:has(.recipient-postcode) .sender-block {
   top: 18%;
 }
-.vertical .address-postcode {
-  margin-inline-end: 3mm;
-}
-.vertical .address-phone {
-  margin-inline-start: 4mm;
-}
+
 
 .number-control { display: flex; align-items: center; gap: 5px; }
 .number-control input { min-width: 0; }
@@ -513,8 +531,6 @@ footer {
 .envelope [data-block] { overflow: visible; max-width: 85%; }
 .envelope [data-block][tabindex] { cursor: move; touch-action: none; }
 .envelope .overflowing { outline: 2px solid #c22; }
-.vertical .recipient-name { flex-direction: row; justify-content: flex-start; gap: 3mm; align-items: baseline; }
-.vertical .salutation { margin-top: 0; }
 .vertical .recipient-address { max-width: 28%; }
 .vertical .sender-block { max-width: 28%; }
 .horizontal .recipient-name { max-height: 30%; }
