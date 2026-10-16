@@ -212,7 +212,7 @@ footer {
 }
 .gallery {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 410px), 1fr));
   gap: 22px;
 }
 .size-card {
@@ -231,7 +231,7 @@ footer {
 }
 .thumbnail {
   background: #eceee6;
-  height: 230px;
+  height: 330px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,6 +242,11 @@ footer {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
+}
+.card-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .card-caption span {
   color: #74816f;
@@ -412,9 +417,6 @@ footer {
   .form-grid,
   .editor-layout {
     grid-template-columns: 1fr;
-  }
-  .gallery {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .header-note {
     display: none;
