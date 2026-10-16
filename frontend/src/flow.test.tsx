@@ -28,6 +28,9 @@ test("sample to gallery to editor and physical print size", async () => {
       "105mm 220mm",
     ),
   );
+  expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", {name: t.boxes}) as HTMLInputElement).checked).toBe(false);
+  expect((screen.getByRole("checkbox", {name: t.showAddressLabel}) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(button);
   expect(print).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", {name: t.print}));
@@ -102,4 +105,12 @@ test("block steppers and number inputs have distinct accessible names", () => {
       expect(Number(input.value)).toBe(initial);
     }
   }
+});
+
+test("phone display is off and disabled without phone data", () => {
+  window.location.hash = "/editor/chinese-vertical";
+  render(<App />);
+  const checkbox = screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement;
+  expect(checkbox.checked).toBe(false);
+  expect(checkbox.disabled).toBe(true);
 });

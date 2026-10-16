@@ -90,7 +90,7 @@ function Preview({
   );
 }
 function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
-  const [s, setS] = useState(() => loadSettings(size));
+  const [s, setS] = useState(() => loadSettings(size, draft));
   useEffect(() => {
     saveSettings(size.id, s);
   }, [size.id, s]);
@@ -100,10 +100,10 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
   const [skip, setSkip] = useState(false);
   const [kaiMissing, setKaiMissing] = useState(false);
   useEffect(() => {
-    const sync = (e: StorageEvent) => { if (e.key === settingsKey(size.id) || e.key === null) setS(loadSettings(size)); };
+    const sync = (e: StorageEvent) => { if (e.key === settingsKey(size.id) || e.key === null) setS(loadSettings(size, draft)); };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
-  }, [size]);
+  }, [size, draft]);
   useEffect(() => {
     if (s.font !== "kai") return;
     const names = ["BiauKai", "DFKai-SB", "KaiTi", "STKaiti", "Kaiti TC"];
@@ -240,7 +240,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
               </div>
               <div className="actions">
                 <Button variant="ghost" onClick={() => move(p, 0, 0)}>{t.center}</Button>
-                <Button variant="ghost" onClick={() => { const defaults = defaultSettings(size); setRaw({}); setS(prev => ({...prev, [`${p}Size`]: defaults[`${p}Size`], [`${p}X`]: 0, [`${p}Y`]: 0})); }}>{t.resetBlock}</Button>
+                <Button variant="ghost" onClick={() => { const defaults = defaultSettings(size, draft); setRaw({}); setS(prev => ({...prev, [`${p}Size`]: defaults[`${p}Size`], [`${p}X`]: 0, [`${p}Y`]: 0})); }}>{t.resetBlock}</Button>
               </div>
               {overflow.includes(p) && <div role="status" aria-live="polite" className="error">{t[`${p}Block`]}：{t.overflow}
                 <Button variant="outline" onClick={() => {
@@ -253,12 +253,12 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
             </fieldset>
           ))}
           {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "phoneGroups", "boxes"] as const).map((k) => (
+          {(["phones", "phoneGroups", "boxes", "showAddressLabel"] as const).map((k) => (
             <label className="check" key={k}>
               <input
                 type="checkbox"
                 disabled={k === "phones" && !draft.recipientPhone.trim() && !draft.senderPhone.trim()}
-                checked={s[k]}
+                checked={k === "phones" ? s[k] && !!(draft.recipientPhone.trim() || draft.senderPhone.trim()) : s[k]}
                 onChange={(e) => update(k, e.target.checked)}
               />
               {t[k]}
@@ -266,7 +266,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           ))}
           {!draft.recipientPhone.trim() && !draft.senderPhone.trim() && <p className="hint">{t.noPhones}</p>}
           <div className="actions">
-            <Button variant="outline" onClick={() => { setRaw({}); setS(resetSettings(size)); }}>
+            <Button variant="outline" onClick={() => { setRaw({}); setS(resetSettings(size, draft)); }}>
               {t.reset}
             </Button>
             <Button variant="ghost" onClick={() => go("/gallery")}>
@@ -471,7 +471,7 @@ export default function App() {
                 >
                   <Preview
                     draft={draft}
-                    settings={defaultSettings(size)}
+                    settings={defaultSettings(size, draft)}
                     thumbnail
                   />
                   <div className="card-caption">
