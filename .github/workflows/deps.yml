@@ -1,0 +1,41 @@
+name: Dependency audit
+
+# #97: dependency vulnerability checks, since Dependabot ignores several majors.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 2 * * 1" # Mondays 02:17 UTC (10:17 HKT)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # actions/dependency-review-action is not used yet: it needs the repo's Dependency graph, which is
+  # disabled (settings change, admin only). pnpm audit below already runs on every PR's lockfile.
+  npm-audit:
+    name: pnpm audit (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Blocking: anything that ships to the browser must have no high/critical advisories.
+      - name: Production dependencies (blocking, high+)
+        run: pnpm audit --prod --audit-level high
+      - name: All dependencies incl. dev (blocking, high+)
+        run: pnpm audit --audit-level high
