@@ -500,3 +500,42 @@ footer {
 .vertical .address-phone {
   margin-inline-start: 4mm;
 }
+
+.number-control { display: flex; align-items: center; gap: 5px; }
+.number-control input { min-width: 0; }
+.number-control button { padding: 5px; border: 1px solid #cad3ca; border-radius: 4px; }
+.control-grid { grid-template-columns: 1fr; }
+.dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.print-callout { background: #fff9df; border: 1px solid #c9ac50; border-radius: 8px; padding: 12px; margin: 12px; font-size: 14px; }
+.print-steps { list-style: decimal; padding-left: 24px; line-height: 1.9; }
+[data-slot="dialog-overlay"] { background: #0005; }
+[data-slot="dialog-content"] { background: white; color: #263b32; max-width: min(480px, calc(100% - 32px)); padding: 24px; }
+.envelope [data-block] { overflow: visible; max-width: 85%; }
+.envelope [data-block][tabindex] { cursor: move; touch-action: none; }
+.envelope .overflowing { outline: 2px solid #c22; }
+.vertical .recipient-name { flex-direction: row; justify-content: flex-start; gap: 3mm; align-items: baseline; }
+.vertical .salutation { margin-top: 0; }
+.vertical .recipient-address { max-width: 28%; }
+.vertical .sender-block { max-width: 28%; }
+.horizontal .recipient-name { max-height: 30%; }
+.horizontal .recipient-address { max-height: 24%; }
+.horizontal .sender-block { max-height: 28%; }
+.envelope .phone { font-size: 1em; text-orientation: upright; }
+.envelope small:has(.phone) { font-size: 1em; }
+.phone.grouped > span + span { margin-inline-start: 0.4em; }
+@media (max-width: 800px) {
+  .preview-panel { position: sticky; top: 0; z-index: 10; max-height: 45vh; overflow: auto; }
+  .preview-area { padding-top: 12px; }
+  .scale { margin: 4px; }
+  .print-callout { margin: 4px; padding: 6px; }
+  .control-grid, .dimensions { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .gallery { grid-template-columns: 1fr; }
+  .thumbnail { height: 330px; }
+}
+@media print {
+  .envelope .overflowing { outline: none !important; }
+  .print-callout, [data-slot="dialog-overlay"], [data-slot="dialog-content"] { display: none !important; }
+  .preview-panel { position: static; max-height: none; overflow: visible; }
+}

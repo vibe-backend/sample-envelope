@@ -1,5 +1,5 @@
 import { emptyDraft, type Draft } from "./validation";
-import type { EnvelopeSize, Orientation, WritingMode } from "./sizes";
+import { orientedSize, type EnvelopeSize, type Orientation, type WritingMode } from "./sizes";
 export interface Settings {
   orientation: Orientation;
   writingMode: WritingMode;
@@ -13,6 +13,7 @@ export interface Settings {
   addressY: number;
   senderX: number;
   senderY: number;
+  phoneGroups: boolean;
   phones: boolean;
   boxes: boolean;
   spacing: number;
@@ -32,11 +33,11 @@ export const defaultSettings = (s: EnvelopeSize): Settings => ({
   addressY: 0,
   senderX: 0,
   senderY: 0,
-  phones: true,
-  boxes: false,
-  spacing: 0.12,
-  widthMm: s.widthMm,
-  heightMm: s.heightMm,
+  phoneGroups: false,
+  phones: false,
+  boxes: s.id === "chinese-vertical",
+  spacing: 0.1,
+  ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
 export const settingsKey = (id: string) => `sample-envelope:settings:v1:${id}`;
@@ -85,7 +86,8 @@ export function loadSettings(s: EnvelopeSize): Settings {
     v[key] = Math.max(50, Math.min(500, v[key]));
   for (const key of ["nameSize", "addressSize", "senderSize"] as const)
     v[key] = Math.max(6, Math.min(72, v[key]));
-  return v;
+  if (s.id === "custom") v.orientation = v.widthMm <= v.heightMm ? "portrait" : "landscape";
+  return {...v, ...orientedSize(v, v.orientation)};
 }
 export const saveSettings = (id: string, s: Settings) =>
   save(settingsKey(id), s);
