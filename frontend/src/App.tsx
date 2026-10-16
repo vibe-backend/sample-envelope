@@ -9,6 +9,7 @@ import { Envelope } from "./components/Envelope";
 import { t } from "./i18n/zh-Hant";
 import { sizes, orientedSize, pageRule, type EnvelopeSize } from "./lib/sizes";
 import { mmToPx } from "./lib/units";
+import { stepValue } from "./lib/step";
 import { emptyDraft, validate, type Draft } from "./lib/validation";
 import {
   draftKey, settingsKey,
@@ -153,10 +154,10 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
     return <div className="field" key={key}>
       <Label htmlFor={key}>{label} <span>{min}–{max}{key.endsWith("Size") ? " pt" : ""}</span></Label>
       <div className="number-control">
-        <button type="button" aria-label={`${accessibleName} ${t.decrease}`} onClick={() => apply(String(Number(value) - step))}>−</button>
+        <button type="button" aria-label={`${accessibleName} ${t.decrease}`} onClick={() => apply(String(stepValue(Number(value), step, -1)))}>−</button>
         <Input id={key} aria-label={accessibleName} type="number" min={min} max={max} step={step} value={value} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : undefined} onChange={e => apply(e.target.value)} />
         {key.endsWith("Size") && <span>pt</span>}
-        <button type="button" aria-label={`${accessibleName} ${t.increase}`} onClick={() => apply(String(Number(value) + step))}>+</button>
+        <button type="button" aria-label={`${accessibleName} ${t.increase}`} onClick={() => apply(String(stepValue(Number(value), step, 1)))}>+</button>
       </div>
       {invalid && <p className="error" id={`${key}-error`}>{t.rangeError}</p>}
     </div>;
