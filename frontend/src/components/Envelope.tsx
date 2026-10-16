@@ -103,6 +103,12 @@ export function Envelope({
     ) : (
       digitRuns(value)
     );
+  const inlineAddress = (code: string, address: string, showPostcode = true) => <>
+    {showPostcode && <span className="address-postcode">
+      {postcode(code)}<span className="postcode-space"> </span>
+    </span>}
+    <span className="address-text">{digitRuns(address)}</span>
+  </>;
   const title =
     d.recipientTitle === t.titles[6] ? d.customTitle : d.recipientTitle;
   return (
@@ -126,12 +132,7 @@ export function Envelope({
       <div {...interactive("address")} className="recipient-address" style={{...block("address"), ...(vertical ? {top: mmToCss(addressArea.topMm), height: mmToCss(addressArea.heightMm)} : {})}}>
         <span className="recipient-address-column">
         {s.showAddressLabel && t.addressLabel}
-        {!(s.boxes && s.writingMode === "horizontal-tb") && (
-          <span className="address-postcode">
-            {postcode(d.recipientPostcode)}<span className="postcode-space"> </span>
-          </span>
-        )}
-        <span className="address-text">{digitRuns(d.recipientAddress)}</span>
+        {inlineAddress(d.recipientPostcode, d.recipientAddress, !(s.boxes && !vertical))}
         </span>
         {s.phones && d.recipientPhone.trim() && (
           <small className="address-phone">
@@ -153,7 +154,7 @@ export function Envelope({
       {(d.senderName.trim() || d.senderAddress.trim()) && <div {...interactive("sender")} className="sender-block" style={block("sender")}>
         {vertical ? <>
           {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
-          <span className="sender-address-column">{postcode(d.senderPostcode)}{" "}{digitRuns(d.senderAddress)}</span>
+          <span className="sender-address-column">{inlineAddress(d.senderPostcode, d.senderAddress)}</span>
           {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{t.phoneLabel}{phone(d.senderPhone)}</span>}
         </> : <>
           {postcode(d.senderPostcode)}
