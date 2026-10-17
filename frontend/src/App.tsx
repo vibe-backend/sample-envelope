@@ -254,7 +254,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
             </fieldset>
           ))}
           {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "phoneGroups", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showTitle", "showSalutation"] as const).map((k) => (
+          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showTitle", "showSalutation"] as const).map((k) => (
             <label className="check" key={k}>
               <input
                 type="checkbox"

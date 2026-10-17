@@ -82,6 +82,7 @@ export const t = {
   printPostcodeBoxes: "印郵遞區號格",
   printStampBox: "印郵票位",
   printRecipientFrame: "印收件人紅框",
+  printOuterBorder: "印外框（普通紙試印用）",
   printNotice: "印注意事項",
   recipientPostcodeCaption: "請寫收件人郵遞區號",
   senderPostcodeCaption: "寄件人郵遞區號",

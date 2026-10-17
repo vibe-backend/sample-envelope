@@ -24,7 +24,7 @@ test("draft saves, restores and resets", () => {
 test("settings are isolated by size and reset", () => {
   const s = { ...defaultSettings(sizes[0]), nameSize: 30 };
   saveSettings(sizes[0].id, s);
-  expect(localStorage.getItem(`sample-envelope:settings:v4:${sizes[0].id}`)).toBe(JSON.stringify(s));
+  expect(localStorage.getItem(`sample-envelope:settings:v5:${sizes[0].id}`)).toBe(JSON.stringify(s));
   expect(loadSettings(sizes[0])).toEqual(s);
   expect(loadSettings(sizes[1])).toEqual(defaultSettings(sizes[1]));
   resetSettings(sizes[0]);
@@ -49,19 +49,21 @@ test("new defaults use inline postcodes and phone presence", () => {
     expect(defaultSettings(size, {...emptyDraft, senderPhone: "0928-619-378"}).phones).toBe(true);
     expect(defaultSettings(size, {...emptyDraft, senderPhone: "  "}).phones).toBe(false);
   }
-  expect(defaultSettings(sizes[0])).toMatchObject({nameSize: 28, addressSize: 12, senderSize: 13});
+  expect(defaultSettings(sizes[0])).toMatchObject({nameSize: 28, addressSize: 20, senderSize: 16});
 });
 
-test("v1 settings cannot override the new defaults", () => {
-  localStorage.setItem(`sample-envelope:settings:v1:${sizes[0].id}`, JSON.stringify({boxes: true, senderSize: 10}));
-  expect(settingsKey(sizes[0].id)).toBe(`sample-envelope:settings:v4:${sizes[0].id}`);
+test("previous settings cannot override the calibrated defaults", () => {
+  for (const version of [1, 4]) {
+    localStorage.setItem(`sample-envelope:settings:v${version}:${sizes[0].id}`, JSON.stringify({boxes: true, senderSize: 13, addressSize: 12}));
+  }
+  expect(settingsKey(sizes[0].id)).toBe(`sample-envelope:settings:v5:${sizes[0].id}`);
   expect(loadSettings(sizes[0])).toEqual(defaultSettings(sizes[0]));
 });
 
  test("preprinted defaults belong only to the Chinese preset", () => {
   for (const size of sizes) {
     const settings = defaultSettings(size);
-    for (const key of ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const) {
+    for (const key of ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice", "printOuterBorder"] as const) {
       expect(settings[key]).toBe(size.id === "chinese-vertical");
     }
   }
