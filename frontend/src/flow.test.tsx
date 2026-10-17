@@ -31,7 +31,10 @@ test("sample to gallery to editor and physical print size", async () => {
     ),
   );
   expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
-  expect((screen.getByRole("checkbox", {name: t.boxes}) as HTMLInputElement).checked).toBe(false);
+  expect(screen.queryByRole("checkbox", {name: t.boxes})).toBeNull();
+  for (const key of ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const) {
+    expect((screen.getByRole("checkbox", {name: t[key]}) as HTMLInputElement).checked).toBe(true);
+  }
   expect((screen.getByRole("checkbox", {name: t.showAddressLabel}) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(button);
   expect(print).not.toHaveBeenCalled();

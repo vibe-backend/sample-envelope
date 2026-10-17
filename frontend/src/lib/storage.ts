@@ -1,6 +1,11 @@
 import { emptyDraft, type Draft } from "./validation";
 import { orientedSize, type EnvelopeSize, type Orientation, type WritingMode } from "./sizes";
 export interface Settings {
+  presetId: string;
+  printPostcodeBoxes: boolean;
+  printStampBox: boolean;
+  printRecipientFrame: boolean;
+  printNotice: boolean;
   orientation: Orientation;
   writingMode: WritingMode;
   font: "serif" | "sans" | "kai";
@@ -22,11 +27,16 @@ export interface Settings {
   heightMm: number;
 }
 export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Settings => ({
+  presetId: s.id,
+  printPostcodeBoxes: s.id === "chinese-vertical",
+  printStampBox: s.id === "chinese-vertical",
+  printRecipientFrame: s.id === "chinese-vertical",
+  printNotice: s.id === "chinese-vertical",
   orientation: s.defaultOrientation,
   writingMode: s.defaultWritingMode,
   font: "serif",
   nameSize: s.defaultWritingMode === "vertical-rl" ? 28 : 24,
-  addressSize: 14,
+  addressSize: s.id === "chinese-vertical" ? 12 : 14,
   senderSize: s.defaultWritingMode === "vertical-rl" ? 13 : 10,
   nameX: 0,
   nameY: 0,
@@ -42,7 +52,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v2:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v3:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
@@ -88,6 +98,10 @@ export function loadSettings(s: EnvelopeSize, draft: Draft = emptyDraft): Settin
     v[key] = Math.max(50, Math.min(500, v[key]));
   for (const key of ["nameSize", "addressSize", "senderSize"] as const)
     v[key] = Math.max(6, Math.min(72, v[key]));
+  v.presetId = s.id;
+  if (s.id !== "chinese-vertical") {
+    v.printPostcodeBoxes = v.printStampBox = v.printRecipientFrame = v.printNotice = false;
+  }
   if (s.id === "custom") v.orientation = v.widthMm <= v.heightMm ? "portrait" : "landscape";
   return {...v, ...orientedSize(v, v.orientation)};
 }

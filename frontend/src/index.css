@@ -337,6 +337,11 @@ footer {
 }
 /* Vertical columns follow the reference template, from right to left. */
 .vertical { text-orientation: upright; }
+.vertical .recipient-address,
+.vertical .sender-block {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
 .vertical .recipient-address {
   right: 12mm;
   display: flex;
@@ -350,6 +355,10 @@ footer {
 .vertical .sender-phone-column {
   display: block;
   white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  top: auto;
+  font-size: inherit;
 }
 .vertical .postcode-space {
   text-orientation: mixed;
@@ -557,3 +566,37 @@ footer {
   .print-callout, [data-slot="dialog-overlay"], [data-slot="dialog-content"] { display: none !important; }
   .preview-panel { position: static; max-height: none; overflow: visible; }
 }
+
+/* Taiwanese blank-paper template: these marks are part of the printed artwork. */
+.preprinted {
+  position: absolute;
+  color: #c8102e;
+  border-color: #c8102e;
+  pointer-events: none;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.printed-postcode { writing-mode: horizontal-tb; text-orientation: mixed; }
+.recipient-postcode-print { left: 45%; top: 6%; }
+.sender-postcode-print { left: 8%; top: 89%; }
+.postal-row, .postal-group { display: flex; align-items: center; gap: 0.5mm; }
+.postal-row { gap: 0; }
+.postal-cell {
+  width: 6mm;
+  height: 7mm;
+  border: 0.25mm solid #c8102e;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12pt;
+  color: black;
+}
+.postal-dash { width: 2mm; text-align: center; font-size: 10pt; }
+.postal-caption { text-align: center; font-size: 6pt; margin-top: 1mm; white-space: nowrap; }
+.stamp-box { left: 8%; top: 9%; width: 20mm; height: 20mm; border: 0.25mm solid #c8102e; padding: 1mm; }
+.stamp-box > div { border: 0.15mm solid #c8102e; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1mm; font-size: 10pt; }
+.stamp-box span { white-space: nowrap; }
+.recipient-frame { left: 30%; top: 18%; width: 28%; height: 65%; border: 0.25mm solid #c8102e; }
+.postal-notice { left: 92%; top: 20%; height: 40%; font-size: 5.5pt; writing-mode: vertical-rl; white-space: nowrap; }
+.taiwanese .recipient-address { right: 12%; gap: 1mm; }
+.taiwanese .recipient-name { left: 30%; width: 28%; margin-left: 0; height: 65%; padding-top: 3mm; }
