@@ -170,3 +170,15 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
     width.mockRestore();
   }
 });
+
+
+test("recipient visibility toggles default on and can be switched off", () => {
+  window.location.hash = "/editor/chinese-vertical";
+  render(<App />);
+  for (const name of [t.showTitle, t.showSalutation]) {
+    const toggle = screen.getByRole<HTMLInputElement>("checkbox", {name});
+    expect(toggle.checked).toBe(true);
+    fireEvent.click(toggle);
+    expect(toggle.checked).toBe(false);
+  }
+});

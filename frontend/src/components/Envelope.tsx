@@ -1,11 +1,11 @@
 /* eslint-disable react-hooks/refs -- Pointer handler factories only access refs in event callbacks. */
-import { useEffect, useRef, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, type CSSProperties } from "react";
 import type { Draft } from "../lib/validation";
 import type { Settings } from "../lib/storage";
 import { orientedSize } from "../lib/sizes";
 import { mmToCss } from "../lib/units";
 import { t } from "../i18n/zh-Hant";
-import { isOverflowing } from "../lib/overflow";
+import { isOverflowing, isOutsideInset } from "../lib/overflow";
 import { verticalAddressArea, verticalSenderArea } from "../lib/layout";
 export type Block = "name" | "address" | "sender";
 const fonts = {
@@ -37,10 +37,10 @@ export function postcodeGroups(value: string) {
 }
 function PrintedPostcode({value, kind}: {value: string; kind: "recipient" | "sender"}) {
   return <div className={`preprinted printed-postcode ${kind}-postcode-print`}>
-    <div className="postal-row">{postcodeGroups(value).map((group, i) => <span className="postal-group" key={i}>
-      {i === 1 && <span className="postal-dash">-</span>}
-      {group.map((digit, j) => <span className="postal-cell" key={j}>{digit}</span>)}
-    </span>)}</div>
+    <div className="postal-row">{postcodeGroups(value).map((group, i) => <Fragment key={i}>
+      {i === 1 && <span className="postal-dash" aria-hidden="true" />}
+      <span className="postal-group">{group.map((digit, j) => <span className="postal-cell" key={j}>{digit}</span>)}</span>
+    </Fragment>)}</div>
     <div className="postal-caption">{t[`${kind}PostcodeCaption`]}</div>
   </div>;
 }
@@ -61,7 +61,12 @@ export function Envelope({
     const measure = () => {
       const overflowing: Block[] = [];
       ref.current?.querySelectorAll<HTMLElement>("[data-block]").forEach(el => {
-        const over = isOverflowing(el);
+        const frame = ref.current?.querySelector<HTMLElement>(".recipient-frame");
+        const scale = ref.current ? ref.current.getBoundingClientRect().width / orientedSize(s, s.orientation).widthMm : 0;
+        const outsideFrame = el.dataset.block === "name" && frame && scale > 0
+          ? isOutsideInset(el.getBoundingClientRect(), frame.getBoundingClientRect(), 3 * scale)
+          : false;
+        const over = isOverflowing(el) || outsideFrame;
         el.classList.toggle("overflowing", over);
         if (over) overflowing.push(el.dataset.block as Block);
       });
@@ -101,7 +106,7 @@ export function Envelope({
   const vertical = s.writingMode === "vertical-rl";
   const taiwanese = s.presetId === "chinese-vertical" && vertical;
   const printedPostcodes = taiwanese && s.printPostcodeBoxes;
-  const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{vertical ? digitRuns(part) : part}</span>)}</span>;
+  const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{vertical ? part.split(/(-)/).map((segment, j) => segment === "-" ? <span key={j} className="v-dash"><span className="sr-only">-</span></span> : <span key={j} style={{textOrientation: "upright"}}>{segment}</span>) : part}</span>)}</span>;
   const size = orientedSize(s, s.orientation);
   const addressArea = verticalAddressArea(size.heightMm, taiwanese);
   const senderArea = verticalSenderArea(size.widthMm, size.heightMm);
@@ -165,14 +170,11 @@ export function Envelope({
         )}
       </div>
       {d.recipientName.trim() && <div {...interactive("name")} className="recipient-name" style={block("name")}>
-        <strong style={{ letterSpacing: `${s.spacing}em` }}>
+        <strong className="recipient-name-text" style={{ letterSpacing: `${s.spacing}em` }}>
           {digitRuns(d.recipientName)}
         </strong>
-        <span className="salutation">
-          {digitRuns(title)}
-          {"\u3000"}
-          {d.opening === t.openings[7] ? "" : d.opening}
-        </span>
+        {s.showTitle && title.trim() && <span className="recipient-title">{digitRuns(title)}</span>}
+        {s.showSalutation && d.opening !== t.openings[7] && d.opening.trim() && <span className="salutation">{d.opening}</span>}
       </div>}
       {(d.senderName.trim() || d.senderAddress.trim()) && <div {...interactive("sender")} className="sender-block" style={{...block("sender"), ...(taiwanese ? {
         left: mmToCss(senderArea.leftMm),

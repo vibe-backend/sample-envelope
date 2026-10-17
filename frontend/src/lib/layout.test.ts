@@ -13,11 +13,16 @@ test("default Chinese vertical sender fits three 13pt columns inside the envelop
   const size = orientedSize(settings, settings.orientation);
   const area = verticalSenderArea(size.widthMm, size.heightMm);
   expect(settings.senderSize).toBe(13);
+  expect(area.gapMm).toBe(0);
+  expect(area.lineHeight).toBe(1.3);
   expect(area.leftMm).toBeGreaterThanOrEqual(5);
   expect(area.leftMm / size.widthMm).toBeCloseTo(0.05);
   expect((area.leftMm + area.widthMm) / size.widthMm).toBeCloseTo(0.29);
-  expect(area.topMm / size.heightMm).toBeCloseTo(0.42);
-  expect((area.topMm + area.heightMm) / size.heightMm).toBeCloseTo(0.86);
+  expect(area.topMm / size.heightMm).toBeCloseTo(0.40);
+  expect((area.topMm + area.heightMm) / size.heightMm).toBeCloseTo(0.87);
+
+  // Sender postcode boxes start at 89% of the envelope height.
+  expect(area.topMm + area.heightMm).toBeLessThan(size.heightMm * 0.89);
 
   const columns = [draft.senderName, draft.senderAddress, `${t.phoneLabel}${draft.senderPhone}`];
   const emPx = settings.senderSize * 96 / 72;
