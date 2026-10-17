@@ -28,7 +28,7 @@ test("sample to gallery to editor and physical print size", async () => {
   const button = await screen.findByRole("button", { name: /列印/ });
   await waitFor(() =>
     expect(document.getElementById("page-size")?.textContent).toContain(
-      "120mm 230mm",
+      "120mm 250mm",
     ),
   );
   expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
@@ -198,7 +198,7 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(410);
   try {
     render(<App />);
-    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 230/})).toBeTruthy();
+    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 250/})).toBeTruthy();
     expect(screen.getByRole("button", {name: /DL.*橫式・西式橫書/})).toBeTruthy();
     for (const size of sizes) {
       const descriptor = size.id === "custom" ? "自訂尺寸" : size.id === "chinese-vertical" ? "直式・中文直書" : "橫式・西式橫書";

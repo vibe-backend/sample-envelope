@@ -1,10 +1,13 @@
+/** Empty band at the top of the taller (250 mm) envelope; all front marks sit below this. */
+export const topPadMm = 20;
+
 /** Taiwanese recipient red frame — address columns share this top edge. */
-export const recipientFrameMm = { topMm: 38, heightMm: 159, widthMm: 33 };
+export const recipientFrameMm = { topMm: 38 + topPadMm, heightMm: 159, widthMm: 33 };
 
 // The right-hand address columns can extend below the centre of the envelope.
 export function verticalAddressArea(heightMm: number, taiwanese = false) {
   if (taiwanese) return { topMm: recipientFrameMm.topMm, heightMm: recipientFrameMm.heightMm };
-  const topMm = 8;
+  const topMm = 8 + topPadMm;
   return { topMm, heightMm: heightMm * 0.68 - topMm };
 }
 
@@ -12,16 +15,16 @@ export function verticalAddressArea(heightMm: number, taiwanese = false) {
 export const senderAreaStartXMm = 42;
 
 export function verticalSenderArea(widthMm: number, heightMm: number) {
-  // Match sender postcode left inset; block runs left → start X (clears the red frame).
+  // Match sender postcode left inset; block fills left corridor up to start X.
   const leftMm = 6;
-  // Taller / tighter leading so a typical address stays one column — a second
-  // wrap column was leaving a blank gap before the phone.
-  const topMm = heightMm * 0.36;
+  // Layout ratios are for the content area below the 2 cm top pad; nudge down a little.
+  const contentH = Math.max(0, heightMm - topPadMm);
+  const topMm = topPadMm + contentH * 0.40;
   return {
     leftMm,
     topMm,
     widthMm: Math.max(0, senderAreaStartXMm - leftMm),
-    heightMm: Math.min(heightMm * 0.52, heightMm - 20 - topMm),
+    heightMm: Math.min(contentH * 0.52, heightMm - 20 - topMm),
     // Tight gutter; company name adds its own extra margin before address.
     gapMm: 1,
     lineHeight: 1.05,

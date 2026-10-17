@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { sizes, orientedSize, pageRule } from "./sizes";
 test("all seven presets have expected physical sizes and defaults", () => {
   const expected = [
-    ["chinese-vertical", 120, 230],
+    ["chinese-vertical", 120, 250],
     ["dl", 110, 220],
     ["c5", 162, 229],
     ["c6", 114, 162],
@@ -20,12 +20,12 @@ test("all seven presets have expected physical sizes and defaults", () => {
     );
   });
   expect(orientedSize(sizes[0], "landscape")).toEqual({
-    widthMm: 230,
+    widthMm: 250,
     heightMm: 120,
   });
   expect(orientedSize(sizes[0], "portrait")).toEqual({
     widthMm: 120,
-    heightMm: 230,
+    heightMm: 250,
   });
 });
 
