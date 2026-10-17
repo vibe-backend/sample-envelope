@@ -9,10 +9,10 @@ export function verticalSenderArea(widthMm: number, heightMm: number) {
   const leftMm = Math.max(5, widthMm * 0.05);
   return {
     leftMm,
-    topMm: heightMm * 0.42,
+    topMm: heightMm * 0.40,
     widthMm: widthMm * 0.29 - leftMm,
-    heightMm: heightMm * 0.44,
-    gapMm: 1.5,
-    lineHeight: 1.5,
+    heightMm: heightMm * 0.47,
+    gapMm: 0,
+    lineHeight: 1.3,
   };
 }

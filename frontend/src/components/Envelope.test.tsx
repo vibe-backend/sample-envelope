@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { defaultSettings } from "../lib/storage";
 import { sizes } from "../lib/sizes";
@@ -20,6 +20,25 @@ test("Chinese vertical columns share a container and start at the same top", () 
   const {container, unmount} = render(<Envelope draft={draft} settings={defaultSettings(sizes[0], draft)} />);
   try {
     expect(container.querySelector(".envelope.taiwanese.vertical")).not.toBeNull();
+    const name = container.querySelector<HTMLElement>(".recipient-name")!;
+    const nameStyle = getComputedStyle(name);
+    expect(nameStyle.display).toBe("flex");
+    expect(nameStyle.flexDirection).toBe("row");
+    expect(nameStyle.alignItems).toBe("center");
+    expect(nameStyle.justifyContent).toBe("flex-start");
+    expect(nameStyle.top).toMatch(/^calc\(18% \+ /);
+    expect(parseFloat(nameStyle.top.split(" + ")[1])).toBeCloseTo(3.25 * 96 / 25.4);
+    expect(nameStyle.height).toMatch(/^calc\(67% - /);
+    expect(parseFloat(nameStyle.height.split(" - ")[1])).toBeCloseTo(6.5 * 96 / 25.4);
+    for (const selector of [".recipient-title", ".salutation"]) {
+      const suffix = getComputedStyle(name.querySelector(selector)!);
+      expect(suffix.position).not.toBe("absolute");
+      expect(parseFloat(suffix.fontSize)).toBeCloseTo(28 * 96 / 72 * 0.8, 3);
+      expect(parseFloat(suffix.marginInlineStart)).toBeCloseTo(28 * 96 / 72 * 0.8 * 0.5, 3);
+      expect(suffix.flexShrink).toBe("0");
+      expect(suffix.alignSelf).toBe("center");
+      expect(suffix.lineHeight).toBe("1");
+    }
     for (const [blockSelector, columnSelectors] of [
       [".recipient-address", [".recipient-address-column", ".address-phone"]],
       [".sender-block", [".sender-name-column", ".sender-address-column", ".sender-phone-column"]],
@@ -30,7 +49,8 @@ test("Chinese vertical columns share a container and start at the same top", () 
       expect(blockStyle.flexDirection).toBe("column");
       expect(blockStyle.alignItems).toBe("flex-start");
       expect(blockStyle.justifyContent).toBe("flex-start");
-      expect(blockStyle.gap).toBe(blockSelector === ".sender-block" ? "1.5mm" : "1mm");
+      expect(parseFloat(blockStyle.gap)).toBe(0);
+      expect(blockStyle.lineHeight).toBe("1.3");
       for (const selector of columnSelectors) {
         const column = block.querySelector<HTMLElement>(selector)!;
         expect(column.parentElement).toBe(block);
@@ -40,6 +60,47 @@ test("Chinese vertical columns share a container and start at the same top", () 
         expect(columnStyle.paddingTop).toBe("0px");
         expect(columnStyle.fontSize).toBe(getComputedStyle(block.children[0]).fontSize);
       }
+    }
+  } finally {
+    unmount();
+    style.remove();
+  }
+});
+
+test("printed postcode rows have compact physical geometry and anchored, centred captions", () => {
+  const style = document.createElement("style");
+  style.textContent = readFileSync("src/index.css", "utf8").split("/* Taiwanese blank-paper template:")[1]
+    .replace(/^[\s\S]*?\*\//, "");
+  document.head.append(style);
+  const {container, unmount} = render(<Envelope draft={emptyDraft} settings={defaultSettings(sizes[0])} />);
+  const mm = (value: string) => parseFloat(value) * (value.endsWith("px") ? 25.4 / 96 : 1);
+  try {
+    for (const kind of ["recipient", "sender"]) {
+      const block = container.querySelector(`.${kind}-postcode-print`)!;
+      const blockStyle = getComputedStyle(block);
+      expect(blockStyle.width).toBe("max-content");
+      expect(blockStyle.top).toBe(kind === "recipient" ? "6%" : "89%");
+      expect(kind === "recipient" ? blockStyle.right : blockStyle.left).toBe("8%");
+      const row = block.querySelector(".postal-row")!;
+      expect([...row.children].map(el => el.className)).toEqual(["postal-group", "postal-dash", "postal-group"]);
+      expect(parseFloat(getComputedStyle(row).gap)).toBe(0);
+      for (const group of row.querySelectorAll(".postal-group")) {
+        expect(mm(getComputedStyle(group).gap)).toBeCloseTo(1, 3);
+      }
+      for (const cell of row.querySelectorAll(".postal-cell")) {
+        const css = getComputedStyle(cell);
+        expect(mm(css.width)).toBeCloseTo(6, 3);
+        expect(mm(css.height)).toBeCloseTo(7, 3);
+        expect(css.boxSizing).toBe("border-box");
+        expect(css.flexShrink).toBe("0");
+      }
+      const dash = getComputedStyle(row.querySelector(".postal-dash")!);
+      expect(mm(dash.width)).toBeCloseTo(2.5, 3);
+      expect(mm(dash.marginLeft)).toBeCloseTo(0.8, 3);
+      expect(mm(dash.marginRight)).toBeCloseTo(0.8, 3);
+      expect(mm(dash.borderTopWidth)).toBeCloseTo(0.2, 3);
+      expect(dash.borderTopColor).toBe("rgb(200, 16, 46)");
+      expect(getComputedStyle(block.querySelector(".postal-caption")!).textAlign).toBe("center");
     }
   } finally {
     unmount();
@@ -84,7 +145,7 @@ test.each(["", "   "])("empty recipient name %j hides title and opening", (recip
   expect(container.querySelector('[data-block="name"]')).toBeNull();
   expect(container.querySelector(".salutation")).toBeNull();
   rerender(<Envelope draft={{...emptyDraft, recipientName: "陳大文", recipientTitle: "先生", opening: "啟"}} settings={defaultSettings(sizes[0])} />);
-  expect(container.querySelector(".recipient-name")?.textContent).toBe("陳大文先生\u3000啟");
+  expect(container.querySelector(".recipient-name")?.textContent).toBe("陳大文先生啟");
   unmount();
 });
 
@@ -139,7 +200,8 @@ test("preprinted marks are present, printable, and independently optional", () =
   const {container, rerender, unmount} = render(<Envelope draft={emptyDraft} settings={settings} />);
   const marks = container.querySelectorAll(".preprinted");
   expect(marks).toHaveLength(5);
-  expect(container.querySelector(".stamp-box")?.textContent).toBe(t.stampColumns.join(""));
+  expect(container.querySelector(".stamp-box")?.textContent).toBe("郵票正貼");
+  expect([...container.querySelectorAll(".stamp-box span")].map(column => column.textContent)).toEqual(["郵票", "正貼"]);
   expect(container.querySelector(".postal-notice")?.textContent).toBe(t.postalNotice);
   for (const mark of marks) expect(mark.closest('.hidden, .print\\:hidden, .controls, .hint')).toBeNull();
   for (const [toggle, selector] of [["printStampBox", ".stamp-box"], ["printRecipientFrame", ".recipient-frame"], ["printNotice", ".postal-notice"]] as const) {
@@ -149,4 +211,67 @@ test("preprinted marks are present, printable, and independently optional", () =
   rerender(<Envelope draft={emptyDraft} settings={defaultSettings(sizes[1])} />);
   expect(container.querySelector(".preprinted")).toBeNull();
   unmount();
+});
+
+
+test("sample sender postcode fills only the first three boxes and phone hyphens use accessible vertical bars", () => {
+  const draft = {...emptyDraft, ...t.sampleData};
+  const {container, unmount} = render(<Envelope draft={draft} settings={defaultSettings(sizes[0], draft)} />);
+  expect(container.querySelector(".sender-name-column")?.textContent).toBe("炁衡物聯科技");
+  expect(container.querySelector(".sender-address-column")?.textContent).toBe("臺中市霧峰區本鄉里民生路74巷7號二樓");
+  expect([...container.querySelectorAll(".sender-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual(["4", "1", "3", "", "", ""]);
+  const phone = container.querySelector(".sender-phone-column .phone")!;
+  expect(phone.textContent).toBe("0928-619-378");
+  const segments = [...phone.querySelector("span")!.children] as HTMLElement[];
+  expect(segments.map(span => span.textContent)).toEqual(["0928", "-", "619", "-", "378"]);
+  for (const segment of segments) {
+    expect(segment.style.textOrientation).toBe(segment.textContent === "-" ? "" : "upright");
+    if (segment.textContent === "-") {
+      expect(segment.classList.contains("v-dash")).toBe(true);
+      expect(segment.querySelector(".sr-only")?.textContent).toBe("-");
+    }
+    expect(segment.style.textCombineUpright).toBe("");
+    expect(segment.style.fontSize).toBe("");
+  }
+  unmount();
+});
+
+
+test.each(["vertical-rl", "horizontal-tb"] as const)("recipient flow and optional elements in %s", writingMode => {
+  const draft = {...emptyDraft, recipientName: "陳大文", recipientTitle: "先生", opening: "啟"};
+  const settings = {...defaultSettings(sizes[0]), writingMode};
+  const {container, rerender, unmount} = render(<Envelope draft={draft} settings={settings} />);
+  expect([...container.querySelector(".recipient-name")!.children].map(el => el.className))
+    .toEqual(["recipient-name-text", "recipient-title", "salutation"]);
+  for (const [showTitle, showSalutation, text] of [[false, true, "陳大文啟"], [true, false, "陳大文先生"], [false, false, "陳大文"]] as const) {
+    rerender(<Envelope draft={draft} settings={{...settings, showTitle, showSalutation}} />);
+    expect(container.querySelector(".recipient-name")!.textContent).toBe(text);
+    expect(container.querySelector(".recipient-title") === null).toBe(!showTitle);
+    expect(container.querySelector(".salutation") === null).toBe(!showSalutation);
+  }
+  unmount();
+});
+
+test("frame fit participates in overflow warnings, including moved content", () => {
+  const rect = (left: number, top: number, right: number, bottom: number) => ({left, top, right, bottom, width: right-left, height: bottom-top, x:left, y:top, toJSON: () => ({})});
+  let moved = false;
+  const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    if (this.classList.contains("envelope")) return rect(0, 0, 105, 220);
+    if (this.classList.contains("recipient-frame")) return rect(31.5, 39.6, 60.9, 187);
+    if (this.classList.contains("recipient-name")) return moved ? rect(35, 43, 57, 190) : rect(35, 43, 57, 183);
+    return rect(0, 0, 0, 0);
+  });
+  const onOverflow = vi.fn();
+  const draft = {...emptyDraft, ...t.sampleData};
+  const settings = defaultSettings(sizes[0], draft);
+  const {rerender, unmount} = render(<Envelope draft={draft} settings={settings} onOverflow={onOverflow} />);
+  try {
+    expect(onOverflow).toHaveBeenLastCalledWith([]);
+    moved = true;
+    rerender(<Envelope draft={draft} settings={{...settings, nameY: 7}} onOverflow={onOverflow} />);
+    expect(onOverflow).toHaveBeenLastCalledWith(["name"]);
+  } finally {
+    unmount();
+    bounds.mockRestore();
+  }
 });

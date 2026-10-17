@@ -22,6 +22,8 @@ export interface Settings {
   phones: boolean;
   boxes: boolean;
   showAddressLabel: boolean;
+  showTitle: boolean;
+  showSalutation: boolean;
   spacing: number;
   widthMm: number;
   heightMm: number;
@@ -48,11 +50,13 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   phones: !!(draft.recipientPhone.trim() || draft.senderPhone.trim()),
   boxes: false,
   showAddressLabel: s.defaultWritingMode === "vertical-rl",
+  showTitle: true,
+  showSalutation: true,
   spacing: 0.1,
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v3:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v4:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");

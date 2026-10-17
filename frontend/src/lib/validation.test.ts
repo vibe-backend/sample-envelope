@@ -20,6 +20,7 @@ test("optional postcodes are 3–6 digits", () => {
     ).toBeUndefined();
 });
 test("phone punctuation and digits only", () => {
+  expect(validate({ ...valid, senderPhone: "0928-619-378" })).toEqual({});
   expect(validate({ ...valid, recipientPhone: "+(852) 2123-4567" })).toEqual(
     {},
   );
