@@ -17,7 +17,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
     .map(([rule]) => rule).join("\n");
   document.head.append(style);
   const draft = {...emptyDraft, ...t.sampleData};
-  const {container, unmount} = render(<Envelope draft={draft} settings={defaultSettings(sizes[0], draft)} />);
+  const {container, unmount} = render(<div className="preview-panel" style={{textAlign: "center"}}><Envelope draft={draft} settings={defaultSettings(sizes[0], draft)} /></div>);
   try {
     expect(container.querySelector(".envelope.taiwanese.vertical")).not.toBeNull();
     const name = container.querySelector<HTMLElement>(".recipient-name")!;
@@ -49,6 +49,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
       expect(blockStyle.flexDirection).toBe("column");
       expect(blockStyle.alignItems).toBe("flex-start");
       expect(blockStyle.justifyContent).toBe("flex-start");
+      expect(blockStyle.textAlign).toBe("start");
       expect(parseFloat(blockStyle.gap)).toBe(0);
       expect(blockStyle.lineHeight).toBe("1.3");
       for (const selector of columnSelectors) {
@@ -79,26 +80,51 @@ test("printed postcode rows have compact physical geometry and anchored, centred
       const block = container.querySelector(`.${kind}-postcode-print`)!;
       const blockStyle = getComputedStyle(block);
       expect(blockStyle.width).toBe("max-content");
-      expect(blockStyle.top).toBe(kind === "recipient" ? "6%" : "89%");
-      expect(kind === "recipient" ? blockStyle.right : blockStyle.left).toBe("8%");
+      if (kind === "recipient") expect(mm(blockStyle.top)).toBeCloseTo(7, 3);
+      else expect(mm(blockStyle.bottom)).toBeCloseTo(15, 3);
+      expect(mm(kind === "recipient" ? blockStyle.right : blockStyle.left)).toBeCloseTo(kind === "recipient" ? 8 : 9, 3);
       const row = block.querySelector(".postal-row")!;
       expect([...row.children].map(el => el.className)).toEqual(["postal-group", "postal-dash", "postal-group"]);
       expect(parseFloat(getComputedStyle(row).gap)).toBe(0);
+      expect(getComputedStyle(row).writingMode).toBe("horizontal-tb");
       for (const group of row.querySelectorAll(".postal-group")) {
-        expect(mm(getComputedStyle(group).gap)).toBeCloseTo(1, 3);
+        const groupStyle = getComputedStyle(group);
+        expect(mm(groupStyle.gap)).toBe(0);
+        for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
+          expect(mm(groupStyle[`border${side}Width`])).toBeCloseTo(0.25, 3);
+          expect(groupStyle[`border${side}Style`]).toBe("solid");
+          expect(groupStyle[`border${side}Color`]).toBe("rgb(200, 16, 46)");
+        }
+        for (const [index, cell] of [...group.children].entries()) {
+          const css = getComputedStyle(cell);
+          expect(mm(css.marginLeft || "0")).toBe(0);
+          expect(mm(css.marginRight || "0")).toBe(0);
+          expect(mm(css.borderRightWidth)).toBeCloseTo(index === group.children.length - 1 ? 0 : 0.25, 3);
+          if (index < group.children.length - 1) {
+            expect(css.borderRightStyle).toBe("solid");
+            expect(css.borderRightColor).toBe("rgb(200, 16, 46)");
+          }
+          for (const side of ["Top", "Bottom", "Left"] as const) {
+            expect(mm(css[`border${side}Width`])).toBe(0);
+          }
+        }
       }
       for (const cell of row.querySelectorAll(".postal-cell")) {
         const css = getComputedStyle(cell);
-        expect(mm(css.width)).toBeCloseTo(6, 3);
-        expect(mm(css.height)).toBeCloseTo(7, 3);
+        expect(mm(css.width)).toBeCloseTo(kind === "sender" ? 6 : 8, 3);
+        expect(mm(css.height)).toBeCloseTo(kind === "sender" ? 6.5 : 9, 3);
+        expect(mm(css.fontSize)).toBeCloseTo(kind === "sender" ? 4.5 : 6.3, 3);
+        expect(css.lineHeight).toBe("1");
+        expect(css.justifyContent).toBe("center");
+        expect(css.alignItems).toBe("center");
         expect(css.boxSizing).toBe("border-box");
         expect(css.flexShrink).toBe("0");
       }
       const dash = getComputedStyle(row.querySelector(".postal-dash")!);
-      expect(mm(dash.width)).toBeCloseTo(2.5, 3);
-      expect(mm(dash.marginLeft)).toBeCloseTo(0.8, 3);
-      expect(mm(dash.marginRight)).toBeCloseTo(0.8, 3);
-      expect(mm(dash.borderTopWidth)).toBeCloseTo(0.2, 3);
+      expect(mm(dash.width)).toBeCloseTo(kind === "sender" ? 2 : 3, 3);
+      expect(mm(dash.marginLeft)).toBeCloseTo(0.5, 3);
+      expect(mm(dash.marginRight)).toBeCloseTo(0.5, 3);
+      expect(mm(dash.borderTopWidth)).toBeCloseTo(0.25, 3);
       expect(dash.borderTopColor).toBe("rgb(200, 16, 46)");
       expect(getComputedStyle(block.querySelector(".postal-caption")!).textAlign).toBe("center");
     }
@@ -274,4 +300,32 @@ test("frame fit participates in overflow warnings, including moved content", () 
     unmount();
     bounds.mockRestore();
   }
+});
+
+test("outer border is an inset printable boundary available on any preset", () => {
+  const css = readFileSync("src/index.css", "utf8");
+  const rule = css.match(/\.outer-border\s*\{([^}]+)\}/)![1];
+  expect(rule).toContain("inset: 0");
+  expect(rule).toContain("box-sizing: border-box");
+  expect(rule).toContain("border: 0.2mm dashed #888");
+  expect(rule).toContain("print-color-adjust: exact");
+  expect(rule).not.toContain("display: none");
+  expect(css).toContain(".envelope.has-outer-border { border: none; }");
+  const settings = defaultSettings(sizes[0]);
+  const {container, rerender} = render(<Envelope draft={emptyDraft} settings={settings} />);
+  expect(container.querySelector(".outer-border")).not.toBeNull();
+  expect(container.querySelector(".outer-border")!.className).not.toMatch(/hidden/);
+  rerender(<Envelope draft={emptyDraft} settings={{...settings, printOuterBorder: false}} />);
+  expect(container.querySelector(".outer-border")).toBeNull();
+  const dl = defaultSettings(sizes[1]);
+  expect(dl.printOuterBorder).toBe(false);
+  rerender(<Envelope draft={emptyDraft} settings={{...dl, printOuterBorder: true}} />);
+  expect(container.querySelector(".outer-border")).not.toBeNull();
+});
+
+test("stamp retains its double border at 22mm and columns enable wrapping", () => {
+  const css = readFileSync("src/index.css", "utf8");
+  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("width: 22mm; height: 22mm");
+  expect(css).toMatch(/\.stamp-box > div\s*\{[^}]*border:/);
+  expect(css).toMatch(/\.taiwanese \.sender-phone-column\s*\{[^}]*height: 100%;[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/);
 });

@@ -135,7 +135,7 @@ export function Envelope({
   return (
     <div
       ref={ref}
-      className={`envelope ${taiwanese ? "taiwanese" : ""} ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
+      className={`envelope ${taiwanese ? "taiwanese" : ""} ${s.printOuterBorder ? "has-outer-border" : ""} ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
       role="img"
       aria-label={`${t.preview}：${d.recipientName}，${d.recipientAddress}`}
       style={{
@@ -145,6 +145,7 @@ export function Envelope({
         writingMode: s.writingMode,
       }}
     >
+      {s.printOuterBorder && <div className="outer-border" aria-hidden="true" />}
       {printedPostcodes && <>
         <PrintedPostcode kind="recipient" value={d.recipientPostcode} />
         <PrintedPostcode kind="sender" value={d.senderPostcode} />

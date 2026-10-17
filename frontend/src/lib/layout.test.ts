@@ -1,58 +1,47 @@
 import { expect, test } from "vitest";
 import { verticalAddressArea, verticalSenderArea } from "./layout";
-import { isOverflowing } from "./overflow";
 import { defaultSettings } from "./storage";
-import { sizes, orientedSize } from "./sizes";
-import { mmToPx } from "./units";
+import { sizes } from "./sizes";
 import { t } from "../i18n/zh-Hant";
 import { emptyDraft } from "./validation";
 
-test("default Chinese vertical sender fits three 13pt columns inside the envelope", () => {
+// Conservative: one em per character, even for combined short digit runs.
+const columns = (text: string, height: number, em: number) => Math.ceil([...text].length / Math.floor(height / em));
+
+test("20pt sample recipient address fits one column with a phone column", () => {
   const draft = { ...emptyDraft, ...t.sampleData };
   const settings = defaultSettings(sizes[0], draft);
-  const size = orientedSize(settings, settings.orientation);
-  const area = verticalSenderArea(size.widthMm, size.heightMm);
-  expect(settings.senderSize).toBe(13);
-  expect(area.gapMm).toBe(0);
-  expect(area.lineHeight).toBe(1.3);
-  expect(area.leftMm).toBeGreaterThanOrEqual(5);
-  expect(area.leftMm / size.widthMm).toBeCloseTo(0.05);
-  expect((area.leftMm + area.widthMm) / size.widthMm).toBeCloseTo(0.29);
-  expect(area.topMm / size.heightMm).toBeCloseTo(0.40);
-  expect((area.topMm + area.heightMm) / size.heightMm).toBeCloseTo(0.87);
-
-  // Sender postcode boxes start at 89% of the envelope height.
-  expect(area.topMm + area.heightMm).toBeLessThan(size.heightMm * 0.89);
-
-  const columns = [draft.senderName, draft.senderAddress, `${t.phoneLabel}${draft.senderPhone}`];
-  const emPx = settings.senderSize * 96 / 72;
-  const overflows = (texts: string[]) => isOverflowing({
-    clientWidth: mmToPx(area.widthMm),
-    clientHeight: mmToPx(area.heightMm),
-    scrollWidth: texts.length * emPx * area.lineHeight + mmToPx((texts.length - 1) * area.gapMm),
-    // Conservative: even short digit runs consume one em per digit.
-    scrollHeight: Math.max(...texts.map(text => [...text].length)) * emPx,
-  });
-  expect(overflows(columns)).toBe(false);
-  expect(overflows([columns[0], draft.senderAddress.repeat(3), columns[2]])).toBe(true);
+  const area = verticalAddressArea(220, true);
+  const em = settings.addressSize * 25.4 / 72;
+  expect(settings.addressSize).toBe(20);
+  expect(draft.recipientPostcode).toBe("106409");
+  expect(area.topMm).toBeCloseTo(220 * 0.13);
+  expect(area.topMm + area.heightMm).toBeCloseTo(220 * 0.92);
+  expect(area.topMm).toBeGreaterThan(7 + 9 + 1 + 5.5 * 25.4 / 72);
+  const width = (address: string) => (columns(`${t.addressLabel}${address}`, area.heightMm, em) + columns(`${t.phoneLabel}${draft.recipientPhone}`, area.heightMm, em)) * em * 1.3;
+  expect(columns(`${t.addressLabel}${draft.recipientAddress}`, area.heightMm, em)).toBe(1);
+  expect(width(draft.recipientAddress)).toBeLessThan(105 * (0.91 - 0.58));
+  expect(width(draft.recipientAddress.repeat(4))).toBeGreaterThan(105 * 0.33);
 });
 
-test("default Chinese vertical sample fits the address area, but a long address overflows", () => {
+test("16pt sample sender wraps above the postcode and clear of the frame", () => {
   const draft = { ...emptyDraft, ...t.sampleData };
   const settings = defaultSettings(sizes[0], draft);
-  const size = orientedSize(settings, settings.orientation);
-  const area = verticalAddressArea(size.heightMm, true);
-  expect(area.topMm).toBe(44);
-  expect(area.topMm + area.heightMm).toBeCloseTo(size.heightMm * 0.7);
-
-  // Conservative vertical extent: one em per character, even for short digit
-  // runs that the renderer combines into a single cell. No DOM metrics in jsdom.
-  const overflows = (address: string) => isOverflowing({
-    clientWidth: 100,
-    scrollWidth: 100,
-    clientHeight: mmToPx(area.heightMm),
-    scrollHeight: [...`${t.addressLabel}${address}`].length * settings.addressSize * 96 / 72,
-  });
-  expect(overflows(draft.recipientAddress)).toBe(false);
-  expect(overflows(draft.recipientAddress.repeat(3))).toBe(true);
+  const area = verticalSenderArea(105, 220);
+  const em = settings.senderSize * 25.4 / 72;
+  expect(settings.senderSize).toBe(16);
+  expect(draft.senderName).toBe("炁衡物聯科技");
+  expect(draft.senderAddress).toBe("臺中市霧峰區本鄉里民生路74巷7號二樓");
+  expect(draft.senderPhone).toBe("0928-619-378");
+  expect(area.lineHeight).toBe(1.3);
+  expect(area.leftMm / 105).toBeCloseTo(0.04);
+  expect((area.leftMm + area.widthMm) / 105).toBeCloseTo(0.29);
+  expect(area.topMm / 220).toBeCloseTo(0.4);
+  expect(area.topMm + area.heightMm).toBeLessThan(220 - 15 - 6.5);
+  expect(columns(draft.senderName, area.heightMm, em)).toBe(1);
+  expect(columns(`${t.phoneLabel}${draft.senderPhone}`, area.heightMm, em)).toBe(1);
+  // Independent name and phone use 1em each; address keeps 1.3em line pitch.
+  const width = (address: string) => (2 + columns(address, area.heightMm, em) * area.lineHeight) * em;
+  expect(width(draft.senderAddress)).toBeLessThan(area.widthMm);
+  expect(width(draft.senderAddress.repeat(3))).toBeGreaterThan(area.widthMm);
 });

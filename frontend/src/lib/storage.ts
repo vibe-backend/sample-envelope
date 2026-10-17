@@ -6,6 +6,7 @@ export interface Settings {
   printStampBox: boolean;
   printRecipientFrame: boolean;
   printNotice: boolean;
+  printOuterBorder: boolean;
   orientation: Orientation;
   writingMode: WritingMode;
   font: "serif" | "sans" | "kai";
@@ -33,13 +34,14 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   printPostcodeBoxes: s.id === "chinese-vertical",
   printStampBox: s.id === "chinese-vertical",
   printRecipientFrame: s.id === "chinese-vertical",
+  printOuterBorder: s.id === "chinese-vertical",
   printNotice: s.id === "chinese-vertical",
   orientation: s.defaultOrientation,
   writingMode: s.defaultWritingMode,
   font: "serif",
   nameSize: s.defaultWritingMode === "vertical-rl" ? 28 : 24,
-  addressSize: s.id === "chinese-vertical" ? 12 : 14,
-  senderSize: s.defaultWritingMode === "vertical-rl" ? 13 : 10,
+  addressSize: s.id === "chinese-vertical" ? 20 : 14,
+  senderSize: s.id === "chinese-vertical" ? 16 : s.defaultWritingMode === "vertical-rl" ? 13 : 10,
   nameX: 0,
   nameY: 0,
   addressX: 0,
@@ -56,7 +58,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v4:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v5:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
