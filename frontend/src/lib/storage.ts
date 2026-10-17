@@ -4,6 +4,7 @@ export interface Settings {
   presetId: string;
   printPostcodeBoxes: boolean;
   printStampBox: boolean;
+  printMailCheck: boolean;
   printRecipientFrame: boolean;
   printNotice: boolean;
   printOuterBorder: boolean;
@@ -23,6 +24,7 @@ export interface Settings {
   phones: boolean;
   boxes: boolean;
   showAddressLabel: boolean;
+  showPhoneLabel: boolean;
   showTitle: boolean;
   showSalutation: boolean;
   spacing: number;
@@ -33,6 +35,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   presetId: s.id,
   printPostcodeBoxes: s.id === "chinese-vertical",
   printStampBox: s.id === "chinese-vertical",
+  printMailCheck: s.id === "chinese-vertical",
   printRecipientFrame: s.id === "chinese-vertical",
   printOuterBorder: s.id === "chinese-vertical",
   printNotice: s.id === "chinese-vertical",
@@ -48,17 +51,18 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   addressY: 0,
   senderX: 0,
   senderY: 0,
-  phoneGroups: false,
+  phoneGroups: s.defaultWritingMode === "vertical-rl",
   phones: !!(draft.recipientPhone.trim() || draft.senderPhone.trim()),
   boxes: false,
   showAddressLabel: s.defaultWritingMode === "vertical-rl",
+  showPhoneLabel: s.defaultWritingMode === "vertical-rl",
   showTitle: true,
   showSalutation: true,
   spacing: 0.1,
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v5:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v7:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
@@ -105,8 +109,10 @@ export function loadSettings(s: EnvelopeSize, draft: Draft = emptyDraft): Settin
   for (const key of ["nameSize", "addressSize", "senderSize"] as const)
     v[key] = Math.max(6, Math.min(72, v[key]));
   v.presetId = s.id;
+  // Draft with phone numbers should show them; stale saves from an empty draft can leave phones off.
+  if (d.phones) v.phones = true;
   if (s.id !== "chinese-vertical") {
-    v.printPostcodeBoxes = v.printStampBox = v.printRecipientFrame = v.printNotice = false;
+    v.printPostcodeBoxes = v.printStampBox = v.printMailCheck = v.printRecipientFrame = v.printNotice = false;
   }
   if (s.id === "custom") v.orientation = v.widthMm <= v.heightMm ? "portrait" : "landscape";
   return {...v, ...orientedSize(v, v.orientation)};

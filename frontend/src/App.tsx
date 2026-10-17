@@ -8,7 +8,7 @@ import type { Block } from "./components/Envelope";
 import { Envelope } from "./components/Envelope";
 import { t } from "./i18n/zh-Hant";
 import { sizes, orientedSize, pageRule, type EnvelopeSize } from "./lib/sizes";
-import { mmToPx } from "./lib/units";
+import { DEFAULT_CALIBRATION, loadCalibration, mmToPx, saveCalibration } from "./lib/units";
 import { stepValue } from "./lib/step";
 import { emptyDraft, validate, type Draft } from "./lib/validation";
 import {
@@ -48,6 +48,8 @@ function Preview({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(600);
+  const [zoom, setZoom] = useState<"fit" | number>("fit");
+  const [calibration, setCalibration] = useState(loadCalibration);
   useEffect(() => {
     const update = () => setAvailable(ref.current?.clientWidth || 600);
     update();
@@ -61,11 +63,21 @@ function Preview({
     };
   }, []);
   const { widthMm, heightMm } = orientedSize(settings, settings.orientation);
-  const scale = Math.min(
+  const fitScale = Math.min(
     1,
     (available - 32) / mmToPx(widthMm),
     (thumbnail ? 290 : window.innerWidth < 800 ? window.innerHeight * 0.32 : 650) / mmToPx(heightMm),
   );
+  // Browsers map CSS mm at 96 dpi; multiply by calibration so "100%" can match a real envelope.
+  const scale = thumbnail || zoom === "fit" ? fitScale : zoom * calibration;
+  const nudge = (delta: number) => {
+    const base = zoom === "fit" ? fitScale / calibration : zoom;
+    setZoom(Math.min(2, Math.max(0.25, Math.round((base + delta) * 20) / 20)));
+  };
+  const nudgeCalibration = (delta: number) => {
+    setZoom(1);
+    setCalibration(saveCalibration(calibration + delta));
+  };
   return (
     <div ref={ref} className={thumbnail ? "thumbnail" : "preview-area"} aria-hidden={thumbnail ? true : undefined}>
       <div
@@ -83,9 +95,26 @@ function Preview({
         </div>
       </div>
       {!thumbnail && (
-        <p className="scale">
-          {t.scale} {Math.round(scale * 100)}%
-        </p>
+        <div className="scale-bar">
+          <p className="scale">
+            {t.scale}{" "}
+            {zoom === "fit" ? Math.round(scale * 100) : Math.round(zoom * 100)}%
+          </p>
+          <div className="zoom-controls">
+            <button type="button" aria-label={t.zoomOut} onClick={() => nudge(-0.05)}>−</button>
+            <button type="button" aria-pressed={zoom === "fit"} onClick={() => setZoom("fit")}>{t.zoomFit}</button>
+            <button type="button" aria-pressed={zoom === 1} onClick={() => setZoom(1)}>{t.zoomActual}</button>
+            <button type="button" aria-label={t.zoomIn} onClick={() => nudge(0.05)}>+</button>
+          </div>
+          <div className="zoom-controls calibrate">
+            <span className="calibrate-label" title={t.screenCalibrateHelp}>{t.screenCalibrate}</span>
+            <button type="button" aria-label={`${t.screenCalibrate} ${t.decrease}`} onClick={() => nudgeCalibration(-0.01)}>−</button>
+            <output className="calibrate-value" aria-live="polite">{calibration.toFixed(2)}</output>
+            <button type="button" aria-label={`${t.screenCalibrate} ${t.increase}`} onClick={() => nudgeCalibration(0.01)}>+</button>
+            <button type="button" onClick={() => { setCalibration(saveCalibration(DEFAULT_CALIBRATION)); setZoom(1); }}>{t.screenCalibrateReset}</button>
+          </div>
+          <p className="calibrate-help">{t.screenCalibrateHelp}</p>
+        </div>
       )}
     </div>
   );
@@ -254,7 +283,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
             </fieldset>
           ))}
           {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showTitle", "showSalutation"] as const).map((k) => (
+          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showPhoneLabel", "showTitle", "showSalutation"] as const).map((k) => (
             <label className="check" key={k}>
               <input
                 type="checkbox"
@@ -277,10 +306,19 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
         </aside>
       </div>
       <Dialog open={dialog} onOpenChange={setDialog}>
-        <DialogContent showCloseButton={false}>
+        <DialogContent showCloseButton={false} className="print-dialog">
           <DialogTitle>{t.printHeading}</DialogTitle>
           <DialogDescription>{t.printTip}</DialogDescription>
           <ol className="print-steps"><li>{t.printPaper}：{oriented.widthMm} × {oriented.heightMm} mm</li>{t.printSteps.map(step => <li key={step}>{step}</li>)}</ol>
+          <fieldset className="print-items">
+            <legend>{t.printItems}</legend>
+            {(["printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : [])] as const).map((k) => (
+              <label className="check" key={k}>
+                <input type="checkbox" checked={s[k]} onChange={(e) => update(k, e.target.checked)} />
+                {t[k]}
+              </label>
+            ))}
+          </fieldset>
           <label className="check"><input type="checkbox" checked={skip} onChange={e => {setSkip(e.target.checked); try {localStorage.setItem("sample-envelope:skip-print-dialog", String(e.target.checked));} catch { /* unavailable */ }}} />{t.skipPrint}</label>
           <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>{t.cancel}</Button><Button onClick={() => {setDialog(false); window.print();}}>{t.print}</Button></DialogFooter>
         </DialogContent>

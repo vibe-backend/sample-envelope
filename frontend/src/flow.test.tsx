@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import App from "./App";
 import { t } from "./i18n/zh-Hant";
@@ -27,15 +28,16 @@ test("sample to gallery to editor and physical print size", async () => {
   const button = await screen.findByRole("button", { name: /列印/ });
   await waitFor(() =>
     expect(document.getElementById("page-size")?.textContent).toContain(
-      "105mm 220mm",
+      "120mm 230mm",
     ),
   );
   expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
   expect(screen.queryByRole("checkbox", {name: t.boxes})).toBeNull();
-  for (const key of ["printPostcodeBoxes", "printStampBox", "printRecipientFrame", "printNotice"] as const) {
+  for (const key of ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const) {
     expect((screen.getByRole("checkbox", {name: t[key]}) as HTMLInputElement).checked).toBe(true);
   }
   expect((screen.getByRole("checkbox", {name: t.showAddressLabel}) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByRole("checkbox", {name: t.showPhoneLabel}) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(button);
   expect(print).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", {name: t.print}));
@@ -83,6 +85,8 @@ test("print dialog cancellation and remembered opt-out", () => {
   render(<App />);
   fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
   expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByText(t.printItems)).toBeTruthy();
+  expect(screen.getByRole("checkbox", {name: t.printOuterBorder})).toBeTruthy();
   fireEvent.click(screen.getByRole("button", {name:t.cancel}));
   expect(print).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
@@ -92,6 +96,26 @@ test("print dialog cancellation and remembered opt-out", () => {
   fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
   expect(print).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole("dialog")).toBeNull();
+  print.mockRestore();
+});
+
+test("print dialog can turn off outline and red frame before printing", () => {
+  window.location.hash = "/editor/chinese-vertical";
+  const print = vi.spyOn(window, "print").mockImplementation(() => {});
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getByText(t.printItems)).toBeTruthy();
+  for (const key of ["printOuterBorder", "printRecipientFrame", "printStampBox", "printMailCheck", "printPostcodeBoxes", "printNotice"] as const) {
+    const box = within(dialog).getByRole<HTMLInputElement>("checkbox", {name: t[key]});
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    expect(box.checked).toBe(false);
+  }
+  expect(document.querySelector(".recipient-frame")).toBeNull();
+  expect(document.querySelector(".outer-border")).toBeNull();
+  fireEvent.click(within(dialog).getByRole("button", {name: t.print}));
+  expect(print).toHaveBeenCalledOnce();
   print.mockRestore();
 });
 
@@ -118,6 +142,32 @@ test("phone display is off and disabled without phone data", () => {
   const checkbox = screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement;
   expect(checkbox.checked).toBe(false);
   expect(checkbox.disabled).toBe(true);
+});
+
+test("preview zoom can switch between fit and 100%", () => {
+  window.location.hash = "/editor/chinese-vertical";
+  const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(320);
+  try {
+    render(<App />);
+    const scaled = () => document.querySelector<HTMLElement>(".preview-area .scaled-envelope")!;
+    const fit = Number(scaled().style.transform.match(/scale\(([^)]+)\)/)![1]);
+    expect(fit).toBeLessThan(1);
+    expect(screen.getByText(new RegExp(`${t.scale} ${Math.round(fit * 100)}%`))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name: t.zoomActual}));
+    expect(scaled().style.transform).toBe("scale(0.86)");
+    expect(screen.getByText(`${t.scale} 100%`)).toBeTruthy();
+    expect(screen.getByText("0.86")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name: `${t.screenCalibrate} ${t.decrease}`}));
+    expect(scaled().style.transform).toBe("scale(0.85)");
+    expect(screen.getByText("0.85")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name: t.screenCalibrateReset}));
+    expect(scaled().style.transform).toBe("scale(0.86)");
+    expect(screen.getByText("0.86")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name: t.zoomFit}));
+    expect(scaled().style.transform).toBe(`scale(${fit})`);
+  } finally {
+    width.mockRestore();
+  }
 });
 
 test("letter-spacing steps display decimal values and remain valid", () => {
@@ -148,7 +198,7 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(410);
   try {
     render(<App />);
-    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*105 × 220/})).toBeTruthy();
+    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 230/})).toBeTruthy();
     expect(screen.getByRole("button", {name: /DL.*橫式・西式橫書/})).toBeTruthy();
     for (const size of sizes) {
       const descriptor = size.id === "custom" ? "自訂尺寸" : size.id === "chinese-vertical" ? "直式・中文直書" : "橫式・西式橫書";
@@ -175,7 +225,7 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
 test("recipient visibility toggles default on and can be switched off", () => {
   window.location.hash = "/editor/chinese-vertical";
   render(<App />);
-  for (const name of [t.showTitle, t.showSalutation]) {
+  for (const name of [t.showTitle, t.showSalutation, t.showPhoneLabel]) {
     const toggle = screen.getByRole<HTMLInputElement>("checkbox", {name});
     expect(toggle.checked).toBe(true);
     fireEvent.click(toggle);
