@@ -6,7 +6,7 @@ import { orientedSize } from "../lib/sizes";
 import { mmToCss } from "../lib/units";
 import { t } from "../i18n/zh-Hant";
 import { isOverflowing } from "../lib/overflow";
-import { verticalAddressArea } from "../lib/layout";
+import { verticalAddressArea, verticalSenderArea } from "../lib/layout";
 export type Block = "name" | "address" | "sender";
 const fonts = {
   serif: '"Noto Serif TC","Songti TC","PMingLiU",serif',
@@ -30,6 +30,19 @@ export function digitRuns(text: string) {
       part
     ),
   );
+}
+export function postcodeGroups(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 6).padEnd(6, " ").split("").map(d => d.trim());
+  return [digits.slice(0, 3), digits.slice(3)];
+}
+function PrintedPostcode({value, kind}: {value: string; kind: "recipient" | "sender"}) {
+  return <div className={`preprinted printed-postcode ${kind}-postcode-print`}>
+    <div className="postal-row">{postcodeGroups(value).map((group, i) => <span className="postal-group" key={i}>
+      {i === 1 && <span className="postal-dash">-</span>}
+      {group.map((digit, j) => <span className="postal-cell" key={j}>{digit}</span>)}
+    </span>)}</div>
+    <div className="postal-caption">{t[`${kind}PostcodeCaption`]}</div>
+  </div>;
 }
 export function Envelope({
   draft: d,
@@ -86,15 +99,18 @@ export function Envelope({
     onLostPointerCapture: () => { drag.current = null; },
   });
   const vertical = s.writingMode === "vertical-rl";
+  const taiwanese = s.presetId === "chinese-vertical" && vertical;
+  const printedPostcodes = taiwanese && s.printPostcodeBoxes;
   const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{vertical ? digitRuns(part) : part}</span>)}</span>;
   const size = orientedSize(s, s.orientation);
-  const addressArea = verticalAddressArea(size.heightMm);
+  const addressArea = verticalAddressArea(size.heightMm, taiwanese);
+  const senderArea = verticalSenderArea(size.widthMm, size.heightMm);
   const block = (prefix: "name" | "address" | "sender"): CSSProperties => ({
     fontSize: `${s[`${prefix}Size`]}pt`,
     transform: `translate(${mmToCss(s[`${prefix}X`])}, ${mmToCss(s[`${prefix}Y`])})`,
   });
   const postcode = (value: string) =>
-    s.boxes ? (
+    s.boxes && !vertical ? (
       <span className="postcode-boxes">
         {value.split("").map((v, i) => (
           <span key={i}>{v}</span>
@@ -104,7 +120,7 @@ export function Envelope({
       digitRuns(value)
     );
   const inlineAddress = (code: string, address: string, showPostcode = true) => <>
-    {showPostcode && <span className="address-postcode">
+    {showPostcode && !printedPostcodes && <span className="address-postcode">
       {postcode(code)}<span className="postcode-space"> </span>
     </span>}
     <span className="address-text">{digitRuns(address)}</span>
@@ -114,7 +130,7 @@ export function Envelope({
   return (
     <div
       ref={ref}
-      className={`envelope ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
+      className={`envelope ${taiwanese ? "taiwanese" : ""} ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
       role="img"
       aria-label={`${t.preview}：${d.recipientName}，${d.recipientAddress}`}
       style={{
@@ -124,6 +140,13 @@ export function Envelope({
         writingMode: s.writingMode,
       }}
     >
+      {printedPostcodes && <>
+        <PrintedPostcode kind="recipient" value={d.recipientPostcode} />
+        <PrintedPostcode kind="sender" value={d.senderPostcode} />
+      </>}
+      {taiwanese && s.printStampBox && <div className="preprinted stamp-box"><div>{t.stampColumns.map(column => <span key={column}>{column}</span>)}</div></div>}
+      {taiwanese && s.printRecipientFrame && <div className="preprinted recipient-frame" />}
+      {taiwanese && s.printNotice && <div className="preprinted postal-notice">{t.postalNotice}</div>}
       {s.boxes && s.writingMode === "horizontal-tb" && (
         <div className="recipient-postcode">
           {postcode(d.recipientPostcode)}
@@ -151,7 +174,14 @@ export function Envelope({
           {d.opening === t.openings[7] ? "" : d.opening}
         </span>
       </div>}
-      {(d.senderName.trim() || d.senderAddress.trim()) && <div {...interactive("sender")} className="sender-block" style={block("sender")}>
+      {(d.senderName.trim() || d.senderAddress.trim()) && <div {...interactive("sender")} className="sender-block" style={{...block("sender"), ...(taiwanese ? {
+        left: mmToCss(senderArea.leftMm),
+        top: mmToCss(senderArea.topMm),
+        width: mmToCss(senderArea.widthMm),
+        height: mmToCss(senderArea.heightMm),
+        gap: mmToCss(senderArea.gapMm),
+        lineHeight: senderArea.lineHeight,
+      } : {})}}>
         {vertical ? <>
           {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
           <span className="sender-address-column">{inlineAddress(d.senderPostcode, d.senderAddress)}</span>
