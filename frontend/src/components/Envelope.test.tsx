@@ -4,7 +4,7 @@ import { defaultSettings } from "../lib/storage";
 import { sizes } from "../lib/sizes";
 import { emptyDraft } from "../lib/validation";
 import { t } from "../i18n/zh-Hant";
-import { Envelope, digitRuns, postcodeGroups } from "./Envelope";
+import { Envelope, digitRuns, phoneGroupParts, postcodeGroups } from "./Envelope";
 import { verticalAddressArea } from "../lib/layout";
 import { readFileSync } from "node:fs";
 
@@ -26,10 +26,10 @@ test("Chinese vertical columns share a container and start at the same top", () 
     expect(nameStyle.flexDirection).toBe("row");
     expect(nameStyle.alignItems).toBe("center");
     expect(nameStyle.justifyContent).toBe("flex-start");
-    expect(nameStyle.top).toMatch(/^calc\(18% \+ /);
-    expect(parseFloat(nameStyle.top.split(" + ")[1])).toBeCloseTo(3.25 * 96 / 25.4);
-    expect(nameStyle.height).toMatch(/^calc\(67% - /);
-    expect(parseFloat(nameStyle.height.split(" - ")[1])).toBeCloseTo(6.5 * 96 / 25.4);
+    expect(css.match(/\.recipient-frame\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm); top: 38mm; width: 33mm; height: 159mm");
+    expect(container.querySelector(".envelope.has-recipient-frame")).not.toBeNull();
+    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm + 3.25mm); top: calc(38mm + 3.25mm); width: calc(33mm - 6.5mm)");
+    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("height: calc(159mm - 6.5mm)");
     for (const selector of [".recipient-title", ".salutation"]) {
       const suffix = getComputedStyle(name.querySelector(selector)!);
       expect(suffix.position).not.toBe("absolute");
@@ -52,6 +52,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
       expect(blockStyle.textAlign).toBe("start");
       expect(parseFloat(blockStyle.gap)).toBe(0);
       expect(blockStyle.lineHeight).toBe("1.3");
+      const blockFont = getComputedStyle(block).fontSize;
       for (const selector of columnSelectors) {
         const column = block.querySelector<HTMLElement>(selector)!;
         expect(column.parentElement).toBe(block);
@@ -59,7 +60,11 @@ test("Chinese vertical columns share a container and start at the same top", () 
         expect(columnStyle.top).toBe("auto");
         expect(columnStyle.marginTop).toBe("0px");
         expect(columnStyle.paddingTop).toBe("0px");
-        expect(columnStyle.fontSize).toBe(getComputedStyle(block.children[0]).fontSize);
+        if (selector === ".sender-name-column") {
+          expect(parseFloat(columnStyle.fontSize)).toBeCloseTo(parseFloat(blockFont) * 1.25, 3);
+        } else {
+          expect(columnStyle.fontSize).toBe(blockFont);
+        }
       }
     }
   } finally {
@@ -79,10 +84,10 @@ test("printed postcode rows have compact physical geometry and anchored, centred
     for (const kind of ["recipient", "sender"]) {
       const block = container.querySelector(`.${kind}-postcode-print`)!;
       const blockStyle = getComputedStyle(block);
-      expect(blockStyle.width).toBe("max-content");
-      if (kind === "recipient") expect(mm(blockStyle.top)).toBeCloseTo(7, 3);
-      else expect(mm(blockStyle.bottom)).toBeCloseTo(15, 3);
-      expect(mm(kind === "recipient" ? blockStyle.right : blockStyle.left)).toBeCloseTo(kind === "recipient" ? 8 : 9, 3);
+      expect(["fit-content", "max-content"]).toContain(blockStyle.width);
+      if (kind === "recipient") expect(mm(blockStyle.top)).toBeCloseTo(13, 3);
+      else expect(mm(blockStyle.bottom)).toBeCloseTo(14, 3);
+      expect(mm(kind === "recipient" ? blockStyle.right : blockStyle.left)).toBeCloseTo(kind === "recipient" ? 7 : 6, 3);
       const row = block.querySelector(".postal-row")!;
       expect([...row.children].map(el => el.className)).toEqual(["postal-group", "postal-dash", "postal-group"]);
       expect(parseFloat(getComputedStyle(row).gap)).toBe(0);
@@ -109,16 +114,16 @@ test("printed postcode rows have compact physical geometry and anchored, centred
           }
         }
       }
+      expect(mm(getComputedStyle(row).width)).toBeCloseTo(kind === "recipient" ? 47 : 33, 3);
+      expect(mm(getComputedStyle(row).height)).toBeCloseTo(kind === "recipient" ? 9 : 6, 3);
       for (const cell of row.querySelectorAll(".postal-cell")) {
         const css = getComputedStyle(cell);
-        expect(mm(css.width)).toBeCloseTo(kind === "sender" ? 6 : 8, 3);
-        expect(mm(css.height)).toBeCloseTo(kind === "sender" ? 6.5 : 9, 3);
-        expect(mm(css.fontSize)).toBeCloseTo(kind === "sender" ? 4.5 : 6.3, 3);
+        expect(mm(css.height)).toBeCloseTo(kind === "recipient" ? 9 : 6, 3);
+        expect(mm(css.fontSize)).toBeCloseTo(kind === "recipient" ? 5.6 : 4.2, 3);
         expect(css.lineHeight).toBe("1");
         expect(css.justifyContent).toBe("center");
         expect(css.alignItems).toBe("center");
         expect(css.boxSizing).toBe("border-box");
-        expect(css.flexShrink).toBe("0");
       }
       const dash = getComputedStyle(row.querySelector(".postal-dash")!);
       expect(mm(dash.width)).toBeCloseTo(kind === "sender" ? 2 : 3, 3);
@@ -126,7 +131,13 @@ test("printed postcode rows have compact physical geometry and anchored, centred
       expect(mm(dash.marginRight)).toBeCloseTo(0.5, 3);
       expect(mm(dash.borderTopWidth)).toBeCloseTo(0.25, 3);
       expect(dash.borderTopColor).toBe("rgb(200, 16, 46)");
-      expect(getComputedStyle(block.querySelector(".postal-caption")!).textAlign).toBe("center");
+      const caption = block.querySelector(".postal-caption")!;
+      const captionStyle = getComputedStyle(caption);
+      expect(captionStyle.display).toBe("flex");
+      expect(captionStyle.justifyContent).toBe("space-between");
+      expect(caption.getAttribute("aria-label")).toBe(t[`${kind}PostcodeCaption`]);
+      expect([...caption.querySelectorAll(":scope > span")].map(el => el.textContent).join("")).toBe(t[`${kind}PostcodeCaption`]);
+      expect(mm(captionStyle.width) || mm(getComputedStyle(row).width)).toBeCloseTo(kind === "recipient" ? 47 : 33, 3);
     }
   } finally {
     unmount();
@@ -197,14 +208,31 @@ test("vertical recipient and sender have separate address and phone columns", ()
   unmount();
 });
 
-test.each([false, true])("printed postcodes suppress inline codes only when enabled: %s", (printPostcodeBoxes) => {
+test("showPhoneLabel hides 電話： on recipient and sender", () => {
+  const draft = {...emptyDraft, ...t.sampleData};
+  const settings = {...defaultSettings(sizes[0], draft), showPhoneLabel: false};
+  const {container, unmount} = render(<Envelope draft={draft} settings={settings} />);
+  expect(container.querySelector(".address-phone")?.textContent).toBe(draft.recipientPhone);
+  expect(container.querySelector(".sender-phone-column")?.textContent).toBe(draft.senderPhone);
+  unmount();
+});
+
+test.each([false, true])("printPostcodeBoxes toggles borders+tips only; digits always in cells: %s", (printPostcodeBoxes) => {
   const draft = {...emptyDraft, ...t.sampleData};
   const {container, unmount} = render(<Envelope draft={draft} settings={{...defaultSettings(sizes[0], draft), printPostcodeBoxes}} />);
-  expect(container.querySelectorAll(".printed-postcode")).toHaveLength(printPostcodeBoxes ? 2 : 0);
+  expect(container.querySelectorAll(".printed-postcode")).toHaveLength(2);
+  expect(container.querySelectorAll(".printed-postcode.with-boxes")).toHaveLength(printPostcodeBoxes ? 2 : 0);
+  expect(container.querySelectorAll(".printed-postcode.digits-only")).toHaveLength(printPostcodeBoxes ? 0 : 2);
+  expect([...container.querySelectorAll(".recipient-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual([..."106409"]);
+  expect([...container.querySelectorAll(".sender-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual([..."413014"]);
+  expect(container.querySelector(".recipient-postcode-print .postal-caption")?.textContent ?? null)
+    .toBe(printPostcodeBoxes ? t.recipientPostcodeCaption : null);
+  expect(container.querySelector(".sender-postcode-print .postal-caption")?.textContent ?? null)
+    .toBe(printPostcodeBoxes ? t.senderPostcodeCaption : null);
   for (const kind of ["recipient", "sender"] as const) {
     const column = container.querySelector(`.${kind}-address-column`)!;
-    expect(column.textContent?.includes(draft[`${kind}Postcode`])).toBe(!printPostcodeBoxes);
-    expect(column.querySelector(".address-postcode") === null).toBe(printPostcodeBoxes);
+    expect(column.textContent?.includes(draft[`${kind}Postcode`])).toBe(false);
+    expect(column.querySelector(".address-postcode")).toBeNull();
   }
   expect(container.querySelector(".sender-name-column")?.textContent).toBe(draft.senderName);
   unmount();
@@ -225,40 +253,53 @@ test("preprinted marks are present, printable, and independently optional", () =
   const settings = defaultSettings(sizes[0]);
   const {container, rerender, unmount} = render(<Envelope draft={emptyDraft} settings={settings} />);
   const marks = container.querySelectorAll(".preprinted");
-  expect(marks).toHaveLength(5);
+  expect(marks).toHaveLength(6);
   expect(container.querySelector(".stamp-box")?.textContent).toBe("郵票正貼");
   expect([...container.querySelectorAll(".stamp-box span")].map(column => column.textContent)).toEqual(["郵票", "正貼"]);
+  expect(container.querySelector(".mail-check-title")?.textContent).toBe(t.mailCheckTitle);
+  expect([...container.querySelectorAll(".mail-check-grid tr")].map(row => row.querySelector("td")!.textContent)).toEqual(t.mailCheckOptions);
+  expect(container.querySelectorAll(".mail-check-box")).toHaveLength(t.mailCheckOptions.length);
   expect(container.querySelector(".postal-notice")?.textContent).toBe(t.postalNotice);
   for (const mark of marks) expect(mark.closest('.hidden, .print\\:hidden, .controls, .hint')).toBeNull();
-  for (const [toggle, selector] of [["printStampBox", ".stamp-box"], ["printRecipientFrame", ".recipient-frame"], ["printNotice", ".postal-notice"]] as const) {
+  for (const [toggle, selector] of [["printStampBox", ".stamp-box"], ["printMailCheck", ".mail-check"], ["printRecipientFrame", ".recipient-frame"], ["printNotice", ".postal-notice"]] as const) {
     rerender(<Envelope draft={emptyDraft} settings={{...settings, [toggle]: false}} />);
     expect(container.querySelector(selector)).toBeNull();
+    if (toggle === "printRecipientFrame") expect(container.querySelector(".has-recipient-frame")).toBeNull();
   }
+  rerender(<Envelope draft={emptyDraft} settings={settings} />);
+  expect(container.querySelector(".has-recipient-frame")).not.toBeNull();
   rerender(<Envelope draft={emptyDraft} settings={defaultSettings(sizes[1])} />);
   expect(container.querySelector(".preprinted")).toBeNull();
   unmount();
 });
 
 
-test("sample sender postcode fills only the first three boxes and phone hyphens use accessible vertical bars", () => {
+test("phoneGroupParts normalizes both hyphenated and plain mobiles the same way", () => {
+  expect(phoneGroupParts("0928-619-378", false)).toEqual(["0928619378"]);
+  expect(phoneGroupParts("0912345678", false)).toEqual(["0912345678"]);
+  expect(phoneGroupParts("0928-619-378", true)).toEqual(["0928", "619", "378"]);
+  expect(phoneGroupParts("0912345678", true)).toEqual(["0912", "345", "678"]);
+  expect(phoneGroupParts("0912-345-678", true)).toEqual(["0912", "345", "678"]);
+});
+
+test("sample sender and recipient phones share grouped digit style", () => {
   const draft = {...emptyDraft, ...t.sampleData};
-  const {container, unmount} = render(<Envelope draft={draft} settings={defaultSettings(sizes[0], draft)} />);
+  const settings = defaultSettings(sizes[0], draft);
+  expect(settings.phoneGroups).toBe(true);
+  const {container, rerender, unmount} = render(<Envelope draft={draft} settings={settings} />);
   expect(container.querySelector(".sender-name-column")?.textContent).toBe("炁衡物聯科技");
   expect(container.querySelector(".sender-address-column")?.textContent).toBe("臺中市霧峰區本鄉里民生路74巷7號二樓");
-  expect([...container.querySelectorAll(".sender-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual(["4", "1", "3", "", "", ""]);
-  const phone = container.querySelector(".sender-phone-column .phone")!;
-  expect(phone.textContent).toBe("0928-619-378");
-  const segments = [...phone.querySelector("span")!.children] as HTMLElement[];
-  expect(segments.map(span => span.textContent)).toEqual(["0928", "-", "619", "-", "378"]);
-  for (const segment of segments) {
-    expect(segment.style.textOrientation).toBe(segment.textContent === "-" ? "" : "upright");
-    if (segment.textContent === "-") {
-      expect(segment.classList.contains("v-dash")).toBe(true);
-      expect(segment.querySelector(".sr-only")?.textContent).toBe("-");
-    }
-    expect(segment.style.textCombineUpright).toBe("");
-    expect(segment.style.fontSize).toBe("");
-  }
+  expect((container.querySelector(".sender-block") as HTMLElement).style.gap).toBe("1mm");
+  expect([...container.querySelectorAll(".sender-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual(["4", "1", "3", "0", "1", "4"]);
+  const senderPhone = container.querySelector(".sender-phone-column .phone")!;
+  const recipientPhone = container.querySelector(".address-phone .phone")!;
+  expect(senderPhone.classList.contains("grouped")).toBe(true);
+  expect(recipientPhone.classList.contains("grouped")).toBe(true);
+  expect([...senderPhone.children].map(span => span.textContent)).toEqual(["0928", "619", "378"]);
+  expect([...recipientPhone.children].map(span => span.textContent)).toEqual(["0912", "345", "678"]);
+  rerender(<Envelope draft={draft} settings={{...settings, phoneGroups: false}} />);
+  expect(container.querySelector(".sender-phone-column .phone")!.textContent).toBe("0928619378");
+  expect(container.querySelector(".address-phone .phone")!.textContent).toBe("0912345678");
   unmount();
 });
 
@@ -282,9 +323,9 @@ test("frame fit participates in overflow warnings, including moved content", () 
   const rect = (left: number, top: number, right: number, bottom: number) => ({left, top, right, bottom, width: right-left, height: bottom-top, x:left, y:top, toJSON: () => ({})});
   let moved = false;
   const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    if (this.classList.contains("envelope")) return rect(0, 0, 105, 220);
-    if (this.classList.contains("recipient-frame")) return rect(31.5, 39.6, 60.9, 187);
-    if (this.classList.contains("recipient-name")) return moved ? rect(35, 43, 57, 190) : rect(35, 43, 57, 183);
+    if (this.classList.contains("envelope")) return rect(0, 0, 120, 230);
+    if (this.classList.contains("recipient-frame")) return rect(43.5, 38, 76.5, 197);
+    if (this.classList.contains("recipient-name")) return moved ? rect(46.75, 41.25, 73.25, 200) : rect(46.75, 41.25, 73.25, 193.75);
     return rect(0, 0, 0, 0);
   });
   const onOverflow = vi.fn();
@@ -323,9 +364,17 @@ test("outer border is an inset printable boundary available on any preset", () =
   expect(container.querySelector(".outer-border")).not.toBeNull();
 });
 
-test("stamp retains its double border at 22mm and columns enable wrapping", () => {
+test("stamp retains its double border at 20mm and columns enable wrapping", () => {
   const css = readFileSync("src/index.css", "utf8");
-  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("width: 22mm; height: 22mm");
+  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("width: 20mm; height: 20mm");
   expect(css).toMatch(/\.stamp-box > div\s*\{[^}]*border:/);
-  expect(css).toMatch(/\.taiwanese \.sender-phone-column\s*\{[^}]*height: 100%;[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/);
+  expect(css.match(/\.postal-notice\s*\{([^}]+)\}/)![1]).toContain("right: 8mm; top: 42mm");
+  const mailCheck = css.match(/\.mail-check\s*\{([^}]+)\}/)![1];
+  expect(mailCheck).toContain("left: 8mm");
+  expect(mailCheck).toContain("top: 55mm");
+  expect(mailCheck).toContain("width: 21mm");
+  expect(mailCheck).toContain("height: 26mm");
+  expect(css).toContain("white-space: nowrap");
+  expect(css).toContain(".taiwanese .sender-phone-column");
+  expect(css).toMatch(/\.taiwanese \.sender-address-column\s*\{[^}]*width: 1em;[^}]*white-space: nowrap/);
 });

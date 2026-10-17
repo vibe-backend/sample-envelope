@@ -35,13 +35,31 @@ export function postcodeGroups(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 6).padEnd(6, " ").split("").map(d => d.trim());
   return [digits.slice(0, 3), digits.slice(3)];
 }
-function PrintedPostcode({value, kind}: {value: string; kind: "recipient" | "sender"}) {
-  return <div className={`preprinted printed-postcode ${kind}-postcode-print`}>
+/**
+ * Normalize phone display so recipient/sender use the same style.
+ * - grouped off: digits only (0912345678)
+ * - grouped on: keep 0928-619-378 / spaces, or auto 4-3-3 for 10-digit 09 mobiles
+ */
+export function phoneGroupParts(value: string, grouped: boolean) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return [];
+  if (!grouped) return [digits];
+  const parts = value.split(/[\s-]+/).map(part => part.replace(/\D/g, "")).filter(Boolean);
+  if (parts.length > 1) return parts;
+  if (/^09\d{8}$/.test(digits)) return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7)];
+  return [digits];
+}
+/** Digits always fill the cells; borders + caption tip are optional preprinted marks. */
+function PrintedPostcode({value, kind, showBoxes}: {value: string; kind: "recipient" | "sender"; showBoxes: boolean}) {
+  const caption = t[`${kind}PostcodeCaption`];
+  return <div className={`preprinted printed-postcode ${kind}-postcode-print ${showBoxes ? "with-boxes" : "digits-only"}`}>
     <div className="postal-row">{postcodeGroups(value).map((group, i) => <Fragment key={i}>
       {i === 1 && <span className="postal-dash" aria-hidden="true" />}
       <span className="postal-group">{group.map((digit, j) => <span className="postal-cell" key={j}>{digit}</span>)}</span>
     </Fragment>)}</div>
-    <div className="postal-caption">{t[`${kind}PostcodeCaption`]}</div>
+    {showBoxes && <div className="postal-caption" aria-label={caption}>
+      {[...caption].map((ch, i) => <span key={i}>{ch}</span>)}
+    </div>}
   </div>;
 }
 export function Envelope({
@@ -105,8 +123,18 @@ export function Envelope({
   });
   const vertical = s.writingMode === "vertical-rl";
   const taiwanese = s.presetId === "chinese-vertical" && vertical;
-  const printedPostcodes = taiwanese && s.printPostcodeBoxes;
-  const phone = (value: string) => <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>{(s.phoneGroups ? value.split(/\s+/) : [value.replace(/\s/g, "")]).map((part, i) => <span key={i}>{vertical ? part.split(/(-)/).map((segment, j) => segment === "-" ? <span key={j} className="v-dash"><span className="sr-only">-</span></span> : <span key={j} style={{textOrientation: "upright"}}>{segment}</span>) : part}</span>)}</span>;
+  const printedPostcodes = taiwanese;
+  const uprightDigits = (text: string, keyPrefix: string) =>
+    [...text].map((ch, j) => (
+      <span key={`${keyPrefix}-${j}`} style={{textOrientation: "upright"}}>{ch}</span>
+    ));
+  const phone = (value: string) => (
+    <span className={`phone ${s.phoneGroups ? "grouped" : ""}`}>
+      {phoneGroupParts(value, s.phoneGroups).map((part, i) => (
+        <span key={i}>{vertical ? uprightDigits(part, String(i)) : part}</span>
+      ))}
+    </span>
+  );
   const size = orientedSize(s, s.orientation);
   const addressArea = verticalAddressArea(size.heightMm, taiwanese);
   const senderArea = verticalSenderArea(size.widthMm, size.heightMm);
@@ -125,6 +153,7 @@ export function Envelope({
       digitRuns(value)
     );
   const inlineAddress = (code: string, address: string, showPostcode = true) => <>
+    {/* Taiwanese zip always sits in the postcode cells, not the address column. */}
     {showPostcode && !printedPostcodes && <span className="address-postcode">
       {postcode(code)}<span className="postcode-space"> </span>
     </span>}
@@ -135,7 +164,7 @@ export function Envelope({
   return (
     <div
       ref={ref}
-      className={`envelope ${taiwanese ? "taiwanese" : ""} ${s.printOuterBorder ? "has-outer-border" : ""} ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
+      className={`envelope ${taiwanese ? "taiwanese" : ""} ${taiwanese && s.printRecipientFrame ? "has-recipient-frame" : ""} ${s.printOuterBorder ? "has-outer-border" : ""} ${s.writingMode === "vertical-rl" ? "vertical" : "horizontal"}`}
       role="img"
       aria-label={`${t.preview}：${d.recipientName}，${d.recipientAddress}`}
       style={{
@@ -147,10 +176,16 @@ export function Envelope({
     >
       {s.printOuterBorder && <div className="outer-border" aria-hidden="true" />}
       {printedPostcodes && <>
-        <PrintedPostcode kind="recipient" value={d.recipientPostcode} />
-        <PrintedPostcode kind="sender" value={d.senderPostcode} />
+        <PrintedPostcode kind="recipient" value={d.recipientPostcode} showBoxes={s.printPostcodeBoxes} />
+        <PrintedPostcode kind="sender" value={d.senderPostcode} showBoxes={s.printPostcodeBoxes} />
       </>}
       {taiwanese && s.printStampBox && <div className="preprinted stamp-box"><div>{t.stampColumns.map(column => <span key={column}>{column}</span>)}</div></div>}
+      {taiwanese && s.printMailCheck && <div className="preprinted mail-check">
+        <div className="mail-check-title">{t.mailCheckTitle}</div>
+        <table className="mail-check-grid"><tbody>{t.mailCheckOptions.map(label => (
+          <tr key={label}><td>{label}</td><td className="mail-check-box" aria-hidden="true" /></tr>
+        ))}</tbody></table>
+      </div>}
       {taiwanese && s.printRecipientFrame && <div className="preprinted recipient-frame" />}
       {taiwanese && s.printNotice && <div className="preprinted postal-notice">{t.postalNotice}</div>}
       {s.boxes && s.writingMode === "horizontal-tb" && (
@@ -165,7 +200,7 @@ export function Envelope({
         </span>
         {s.phones && d.recipientPhone.trim() && (
           <small className="address-phone">
-            {vertical ? t.phoneLabel : " "}
+            {vertical ? (s.showPhoneLabel ? t.phoneLabel : "") : " "}
             {phone(d.recipientPhone)}
           </small>
         )}
@@ -188,7 +223,7 @@ export function Envelope({
         {vertical ? <>
           {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
           <span className="sender-address-column">{inlineAddress(d.senderPostcode, d.senderAddress)}</span>
-          {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{t.phoneLabel}{phone(d.senderPhone)}</span>}
+          {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{s.showPhoneLabel && t.phoneLabel}{phone(d.senderPhone)}</span>}
         </> : <>
           {postcode(d.senderPostcode)}
           <div>{digitRuns(d.senderAddress)}</div>
