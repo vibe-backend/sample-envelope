@@ -248,7 +248,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           <p className="eyebrow">03 / {size.label}</p>
           <h1>{t.editor}</h1>
         </div>
-        <Button onClick={print}>{t.print}</Button>
+        <Button className="kiosk-cta" onClick={print}>{t.print}</Button>
       </div>
       <div className="editor-layout">
         <section className="preview-panel">
@@ -466,15 +466,18 @@ export default function App() {
     </div>
   );
   return (
-    <>
-      <header>
+    <div className="kiosk-shell">
+      <header className="kiosk-header">
         <a href="#/" className="brand">
-          <span className="brand-icon">✉</span>
-          {t.app}
+          <span className="brand-icon" aria-hidden="true">印</span>
+          <span className="brand-text">
+            <strong>{t.app}</strong>
+            <small>{t.kioskService}</small>
+          </span>
         </a>
         <span className="header-note">{t.tagline}</span>
       </header>
-      <main>
+      <main className="kiosk-main">
         <nav aria-label={t.app} className="steps">
           {t.steps.map((label, i) => (
             <span
@@ -492,7 +495,8 @@ export default function App() {
             <div className="page-heading">
               <div>
                 <p className="eyebrow">{t.tagline}</p>
-                <h1>{t.steps[0]}</h1>
+                <h1>{t.app}</h1>
+                <p className="lede">{t.steps[0]}</p>
                 <p className="hint">{t.subtitle}</p>
               </div>
               <Button
@@ -557,7 +561,7 @@ export default function App() {
                   >
                     {t.clear}
                   </Button>
-                  <Button type="submit">{t.next} →</Button>
+                  <Button type="submit" className="kiosk-cta">{t.next}</Button>
                 </div>
               </div>
             </form>
@@ -603,7 +607,7 @@ export default function App() {
           <Editor key={editorSize!.id} size={editorSize!} draft={draft} />
         )}
       </main>
-      <footer>{t.footer}</footer>
-    </>
+      <footer className="kiosk-footer">{t.footer}</footer>
+    </div>
   );
 }
