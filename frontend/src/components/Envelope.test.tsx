@@ -26,10 +26,10 @@ test("Chinese vertical columns share a container and start at the same top", () 
     expect(nameStyle.flexDirection).toBe("row");
     expect(nameStyle.alignItems).toBe("center");
     expect(nameStyle.justifyContent).toBe("flex-start");
-    expect(css.match(/\.recipient-frame\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm); top: 58mm; width: 33mm; height: 159mm");
+    expect(css.match(/\.recipient-frame\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm); top: 60mm; width: 33mm; height: 159mm");
     expect(container.querySelector(".envelope.has-recipient-frame")).not.toBeNull();
-    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm + 3.25mm); top: calc(58mm + 3.25mm); width: calc(33mm - 6.5mm)");
-    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("height: calc(159mm - 6.5mm)");
+    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm + 3.25mm); top: calc(60mm + 3.25mm + 10mm); width: calc(33mm - 6.5mm)");
+    expect(css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1]).toContain("height: calc(159mm - 6.5mm - 10mm)");
     for (const selector of [".recipient-title", ".salutation"]) {
       const suffix = getComputedStyle(name.querySelector(selector)!);
       expect(suffix.position).not.toBe("absolute");
@@ -253,7 +253,8 @@ test("preprinted marks are present, printable, and independently optional", () =
   const settings = defaultSettings(sizes[0]);
   const {container, rerender, unmount} = render(<Envelope draft={emptyDraft} settings={settings} />);
   const marks = container.querySelectorAll(".preprinted");
-  expect(marks).toHaveLength(6);
+  expect(marks).toHaveLength(7);
+  expect(container.querySelector(".top-pad-guide")).not.toBeNull();
   expect(container.querySelector(".stamp-box")?.textContent).toBe("郵票正貼");
   expect([...container.querySelectorAll(".stamp-box span")].map(column => column.textContent)).toEqual(["郵票", "正貼"]);
   expect(container.querySelector(".mail-check-title")?.textContent).toBe(t.mailCheckTitle);
@@ -261,7 +262,7 @@ test("preprinted marks are present, printable, and independently optional", () =
   expect(container.querySelectorAll(".mail-check-box")).toHaveLength(t.mailCheckOptions.length);
   expect(container.querySelector(".postal-notice")?.textContent).toBe(t.postalNotice);
   for (const mark of marks) expect(mark.closest('.hidden, .print\\:hidden, .controls, .hint')).toBeNull();
-  for (const [toggle, selector] of [["printStampBox", ".stamp-box"], ["printMailCheck", ".mail-check"], ["printRecipientFrame", ".recipient-frame"], ["printNotice", ".postal-notice"]] as const) {
+  for (const [toggle, selector] of [["showTopPad", ".top-pad-guide"], ["printStampBox", ".stamp-box"], ["printMailCheck", ".mail-check"], ["printRecipientFrame", ".recipient-frame"], ["printNotice", ".postal-notice"]] as const) {
     rerender(<Envelope draft={emptyDraft} settings={{...settings, [toggle]: false}} />);
     expect(container.querySelector(selector)).toBeNull();
     if (toggle === "printRecipientFrame") expect(container.querySelector(".has-recipient-frame")).toBeNull();
@@ -323,7 +324,7 @@ test("frame fit participates in overflow warnings, including moved content", () 
   const rect = (left: number, top: number, right: number, bottom: number) => ({left, top, right, bottom, width: right-left, height: bottom-top, x:left, y:top, toJSON: () => ({})});
   let moved = false;
   const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    if (this.classList.contains("envelope")) return rect(0, 0, 120, 250);
+    if (this.classList.contains("envelope")) return rect(0, 0, 120, 252);
     if (this.classList.contains("recipient-frame")) return rect(43.5, 58, 76.5, 217);
     if (this.classList.contains("recipient-name")) return moved ? rect(46.75, 61.25, 73.25, 220) : rect(46.75, 61.25, 73.25, 213.75);
     return rect(0, 0, 0, 0);
@@ -368,11 +369,11 @@ test("stamp retains its double border at 20mm and columns enable wrapping", () =
   const css = readFileSync("src/index.css", "utf8");
   expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("width: 20mm; height: 20mm");
   expect(css).toMatch(/\.stamp-box > div\s*\{[^}]*border:/);
-  expect(css.match(/\.postal-notice\s*\{([^}]+)\}/)![1]).toContain("right: 8mm; top: 62mm");
+  expect(css.match(/\.postal-notice\s*\{([^}]+)\}/)![1]).toContain("right: 8mm; top: 64mm");
   const mailCheck = css.match(/\.mail-check\s*\{([^}]+)\}/)![1];
   expect(mailCheck).toContain("left: 8mm");
-  expect(mailCheck).toContain("top: 75mm");
-  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("top: 41mm");
+  expect(mailCheck).toContain("top: 77mm");
+  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("top: 43mm");
   expect(mailCheck).toContain("width: 21mm");
   expect(mailCheck).toContain("height: 26mm");
   expect(css).toContain("white-space: nowrap");

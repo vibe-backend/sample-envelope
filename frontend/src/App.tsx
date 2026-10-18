@@ -8,6 +8,7 @@ import type { Block } from "./components/Envelope";
 import { Envelope } from "./components/Envelope";
 import { t } from "./i18n/zh-Hant";
 import { sizes, orientedSize, pageRule, type EnvelopeSize } from "./lib/sizes";
+import { createEnvelopePdfUrl } from "./lib/pdf";
 import { DEFAULT_CALIBRATION, loadCalibration, mmToPx, saveCalibration } from "./lib/units";
 import { stepValue } from "./lib/step";
 import { emptyDraft, validate, type Draft } from "./lib/validation";
@@ -129,6 +130,10 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
   const [dialog, setDialog] = useState(false);
   const [skip, setSkip] = useState(false);
   const [kaiMissing, setKaiMissing] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const pdfFrameRef = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
     const sync = (e: StorageEvent) => { if (e.key === settingsKey(size.id) || e.key === null) setS(loadSettings(size, draft)); };
     window.addEventListener("storage", sync);
@@ -151,17 +156,61 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
     });
     void Promise.resolve().then(() => setKaiMissing(!available));
   }, [s.font]);
+  const oriented = orientedSize(s, s.orientation);
+  const closePdfPreview = () => {
+    setPdfUrl((url) => {
+      if (url) URL.revokeObjectURL(url);
+      return null;
+    });
+  };
+  const runPrint = async () => {
+    setPdfBusy(true);
+    setPdfError(false);
+    try {
+      const url = await createEnvelopePdfUrl({
+        widthMm: oriented.widthMm,
+        heightMm: oriented.heightMm,
+      });
+      setDialog(false);
+      setPdfUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } catch {
+      setPdfError(true);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+  const printFromPreview = () => {
+    const win = pdfFrameRef.current?.contentWindow;
+    if (!win) return;
+    win.focus();
+    win.print();
+  };
   const print = () => {
-    try { if (localStorage.getItem("sample-envelope:skip-print-dialog") === "true") { window.print(); return; } } catch { /* unavailable */ }
+    try {
+      if (localStorage.getItem("sample-envelope:skip-print-dialog") === "true") {
+        void runPrint();
+        return;
+      }
+    } catch { /* unavailable */ }
+    setPdfError(false);
     setDialog(true);
   };
-  const oriented = orientedSize(s, s.orientation);
   useEffect(() => {
+    const {widthMm, heightMm} = oriented;
+    document.documentElement.style.setProperty("--envelope-page-width", `${widthMm}mm`);
+    document.documentElement.style.setProperty("--envelope-page-height", `${heightMm}mm`);
     const style = document.createElement("style");
     style.id = "page-size";
-    style.textContent = pageRule({widthMm: oriented.widthMm, heightMm: oriented.heightMm});
+    style.textContent = pageRule({widthMm, heightMm});
     document.head.append(style);
-    return () => style.remove();
+    return () => {
+      style.remove();
+      document.documentElement.style.removeProperty("--envelope-page-width");
+      document.documentElement.style.removeProperty("--envelope-page-height");
+    };
   }, [oriented.widthMm, oriented.heightMm]);
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setS((prev) => ({ ...prev, [key]: value }));
@@ -199,7 +248,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           <p className="eyebrow">03 / {size.label}</p>
           <h1>{t.editor}</h1>
         </div>
-        <Button onClick={print}>{t.print} ↗</Button>
+        <Button onClick={print}>{t.print}</Button>
       </div>
       <div className="editor-layout">
         <section className="preview-panel">
@@ -283,7 +332,7 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
             </fieldset>
           ))}
           {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showPhoneLabel", "showTitle", "showSalutation"] as const).map((k) => (
+          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showPhoneLabel", "showTitle", "showSalutation"] as const).map((k) => (
             <label className="check" key={k}>
               <input
                 type="checkbox"
@@ -309,10 +358,12 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
         <DialogContent showCloseButton={false} className="print-dialog">
           <DialogTitle>{t.printHeading}</DialogTitle>
           <DialogDescription>{t.printTip}</DialogDescription>
-          <ol className="print-steps"><li>{t.printPaper}：{oriented.widthMm} × {oriented.heightMm} mm</li>{t.printSteps.map(step => <li key={step}>{step}</li>)}</ol>
+          <ol className="print-steps"><li>{t.printPaper}：{oriented.widthMm}×{oriented.heightMm} mm</li>{t.printSteps.map(step => <li key={step}>{step}</li>)}</ol>
+          <p className="save-pdf-tip">{t.printTipPdf.replace("{size}", `${oriented.widthMm}×${oriented.heightMm}`)}</p>
+          {pdfError && <p className="error" role="alert">{t.savePdfError}</p>}
           <fieldset className="print-items">
             <legend>{t.printItems}</legend>
-            {(["printOuterBorder", ...(size.id === "chinese-vertical" ? ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : [])] as const).map((k) => (
+            {(["printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : [])] as const).map((k) => (
               <label className="check" key={k}>
                 <input type="checkbox" checked={s[k]} onChange={(e) => update(k, e.target.checked)} />
                 {t[k]}
@@ -320,7 +371,29 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
             ))}
           </fieldset>
           <label className="check"><input type="checkbox" checked={skip} onChange={e => {setSkip(e.target.checked); try {localStorage.setItem("sample-envelope:skip-print-dialog", String(e.target.checked));} catch { /* unavailable */ }}} />{t.skipPrint}</label>
-          <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>{t.cancel}</Button><Button onClick={() => {setDialog(false); window.print();}}>{t.print}</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialog(false)} disabled={pdfBusy}>{t.cancel}</Button>
+            <Button onClick={() => void runPrint()} disabled={pdfBusy}>
+              {pdfBusy ? t.savePdfWorking : t.print}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!pdfUrl} onOpenChange={(open) => { if (!open) closePdfPreview(); }}>
+        <DialogContent showCloseButton={false} className="pdf-viewer-dialog" aria-describedby={undefined}>
+          <DialogTitle>{t.pdfPreview}</DialogTitle>
+          {pdfUrl && (
+            <iframe
+              ref={pdfFrameRef}
+              className="pdf-viewer-frame"
+              title={t.pdfPreview}
+              src={pdfUrl}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={closePdfPreview}>{t.closePreview}</Button>
+            <Button onClick={printFromPreview}>{t.print}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

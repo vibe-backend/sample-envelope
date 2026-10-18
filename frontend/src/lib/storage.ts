@@ -8,6 +8,7 @@ export interface Settings {
   printRecipientFrame: boolean;
   printNotice: boolean;
   printOuterBorder: boolean;
+  showTopPad: boolean;
   orientation: Orientation;
   writingMode: WritingMode;
   font: "serif" | "sans" | "kai";
@@ -39,6 +40,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   printRecipientFrame: s.id === "chinese-vertical",
   printOuterBorder: s.id === "chinese-vertical",
   printNotice: s.id === "chinese-vertical",
+  showTopPad: s.id === "chinese-vertical",
   orientation: s.defaultOrientation,
   writingMode: s.defaultWritingMode,
   font: "serif",
@@ -62,7 +64,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v8:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v9:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
@@ -112,7 +114,7 @@ export function loadSettings(s: EnvelopeSize, draft: Draft = emptyDraft): Settin
   // Draft with phone numbers should show them; stale saves from an empty draft can leave phones off.
   if (d.phones) v.phones = true;
   if (s.id !== "chinese-vertical") {
-    v.printPostcodeBoxes = v.printStampBox = v.printMailCheck = v.printRecipientFrame = v.printNotice = false;
+    v.printPostcodeBoxes = v.printStampBox = v.printMailCheck = v.printRecipientFrame = v.printNotice = v.showTopPad = false;
   }
   if (s.id === "custom") v.orientation = v.widthMm <= v.heightMm ? "portrait" : "landscape";
   return {...v, ...orientedSize(v, v.orientation)};

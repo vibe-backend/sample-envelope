@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { sizes, orientedSize, pageRule } from "./sizes";
 test("all seven presets have expected physical sizes and defaults", () => {
   const expected = [
-    ["chinese-vertical", 120, 250],
+    ["chinese-vertical", 120, 252],
     ["dl", 110, 220],
     ["c5", 162, 229],
     ["c6", 114, 162],
@@ -20,12 +20,12 @@ test("all seven presets have expected physical sizes and defaults", () => {
     );
   });
   expect(orientedSize(sizes[0], "landscape")).toEqual({
-    widthMm: 250,
+    widthMm: 252,
     heightMm: 120,
   });
   expect(orientedSize(sizes[0], "portrait")).toEqual({
     widthMm: 120,
-    heightMm: 250,
+    heightMm: 252,
   });
 });
 
@@ -34,7 +34,8 @@ test("custom dimensions map directly and orientation swaps printing dimensions",
     const orientation = w <= h ? "portrait" : "landscape";
     const size = {widthMm:w, heightMm:h};
     expect(orientedSize(size, orientation)).toEqual(size);
-    expect(pageRule(orientedSize(size, orientation))).toBe(`@page { size: ${w}mm ${h}mm; margin: 0 }`);
+    expect(pageRule(orientedSize(size, orientation))).toContain(`size: ${w}mm ${h}mm; margin: 0`);
+    expect(pageRule(orientedSize(size, orientation))).toContain("@media print");
     expect(orientedSize(size, orientation === "portrait" ? "landscape" : "portrait")).toEqual({widthMm:h,heightMm:w});
   }
 });
