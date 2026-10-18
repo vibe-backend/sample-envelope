@@ -1025,10 +1025,20 @@ select {
   width: 1em;
   height: auto;
   max-height: 100%;
-  /* Physical left gap: separates address (right) from company name + phone (further left). */
-  margin: 0 0 0 2.5mm;
+  margin: 0;
   white-space: nowrap;
   overflow-wrap: normal;
+}
+/* Real flex item (not margin) so live preview and PDF screenshot match. */
+.taiwanese .sender-col-gap {
+  flex: none;
+  align-self: stretch;
+  width: 2.5mm;
+  min-width: 2.5mm;
+  max-width: 2.5mm;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
 }
 .taiwanese .sender-block {
   max-width: none;
