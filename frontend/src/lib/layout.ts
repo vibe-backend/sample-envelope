@@ -26,8 +26,8 @@ export function verticalSenderArea(heightMm: number) {
     topMm,
     widthMm: Math.max(0, senderAreaStartXMm - leftMm),
     heightMm: Math.min(contentH * 0.52, heightMm - 20 - topMm),
-    // Tight gutter; address column adds margin before the larger company name.
-    gapMm: 1,
+    // Column gutter is handled in CSS (address margin-left); keep flex gap at 0.
+    gapMm: 0,
     lineHeight: 1.05,
   };
 }
