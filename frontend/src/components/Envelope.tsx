@@ -228,8 +228,8 @@ export function Envelope({
         lineHeight: senderArea.lineHeight,
       } : {})}}>
         {vertical ? <>
-          {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
           <span className="sender-address-column">{inlineAddress(d.senderPostcode, d.senderAddress)}</span>
+          {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
           {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{s.showPhoneLabel && t.phoneLabel}{phone(d.senderPhone)}</span>}
         </> : <>
           {postcode(d.senderPostcode)}

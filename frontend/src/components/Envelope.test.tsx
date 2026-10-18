@@ -41,7 +41,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
     }
     for (const [blockSelector, columnSelectors] of [
       [".recipient-address", [".recipient-address-column", ".address-phone"]],
-      [".sender-block", [".sender-name-column", ".sender-address-column", ".sender-phone-column"]],
+      [".sender-block", [".sender-address-column", ".sender-name-column", ".sender-phone-column"]],
     ] as const) {
       const block = container.querySelector<HTMLElement>(blockSelector)!;
       const blockStyle = getComputedStyle(block);
@@ -198,7 +198,7 @@ test("vertical recipient and sender have separate address and phone columns", ()
   expect(recipient.children[0].textContent).toBe(`${t.addressLabel}${draft.recipientPostcode} ${draft.recipientAddress}`);
   expect(recipient.children[1].textContent).toBe(`${t.phoneLabel}${draft.recipientPhone}`);
   const sender = container.querySelector(".sender-block")!;
-  expect([...sender.children].map(el => el.className)).toEqual(["sender-name-column", "sender-address-column", "sender-phone-column"]);
+  expect([...sender.children].map(el => el.className)).toEqual(["sender-address-column", "sender-name-column", "sender-phone-column"]);
   expect(sender.children[1].textContent).toBe(`${draft.senderPostcode} ${draft.senderAddress}`);
   expect(sender.children[2].textContent).toBe(`${t.phoneLabel}${draft.senderPhone}`);
   const digits = recipient.querySelector(".phone span span") as HTMLElement;

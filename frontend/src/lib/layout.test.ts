@@ -43,9 +43,9 @@ test("16pt sample sender wraps above the postcode and clear of the frame", () =>
   expect(area.topMm + area.heightMm).toBeLessThan(252 - 14 - 6);
   expect(columns(draft.senderName, area.heightMm, em)).toBe(1);
   expect(columns(`${t.phoneLabel}${draft.senderPhone}`, area.heightMm, em)).toBe(1);
-  // Single-column address (nowrap); name + address + phone + company margin fit the block.
+  // Single-column address (nowrap); address + name + phone + company margin fit the block.
   expect(columns(draft.senderAddress, area.heightMm, em * area.lineHeight)).toBe(1);
-  const width = (address: string) => (2 + columns(address, area.heightMm, em * area.lineHeight)) * em + 0.55 * em * 1.25;
+  const width = (address: string) => (2 + columns(address, area.heightMm, em * area.lineHeight)) * em + 2.5;
   expect(width(draft.senderAddress)).toBeLessThan(area.widthMm);
   expect(width(draft.senderAddress.repeat(3))).toBeGreaterThan(area.widthMm);
 });
