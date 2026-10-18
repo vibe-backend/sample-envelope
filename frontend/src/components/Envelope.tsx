@@ -229,6 +229,8 @@ export function Envelope({
       } : {})}}>
         {vertical ? <>
           <span className="sender-address-column">{inlineAddress(d.senderPostcode, d.senderAddress)}</span>
+          {/* Explicit spacer: margin is unreliable in PDF/screenshot for vertical-rl. */}
+          {taiwanese && <span className="sender-col-gap" aria-hidden="true" />}
           {d.senderName.trim() && <span className="sender-name-column">{digitRuns(d.senderName)}</span>}
           {s.phones && d.senderPhone.trim() && <span className="sender-phone-column">{s.showPhoneLabel && t.phoneLabel}{phone(d.senderPhone)}</span>}
         </> : <>

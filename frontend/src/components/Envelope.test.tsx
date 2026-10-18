@@ -44,7 +44,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
     }
     for (const [blockSelector, columnSelectors] of [
       [".recipient-address", [".recipient-address-column", ".address-phone"]],
-      [".sender-block", [".sender-address-column", ".sender-name-column", ".sender-phone-column"]],
+      [".sender-block", [".sender-address-column", ".sender-col-gap", ".sender-name-column", ".sender-phone-column"]],
     ] as const) {
       const block = container.querySelector<HTMLElement>(blockSelector)!;
       const blockStyle = getComputedStyle(block);
@@ -64,6 +64,7 @@ test("Chinese vertical columns share a container and start at the same top", () 
       for (const selector of columnSelectors) {
         const column = block.querySelector<HTMLElement>(selector)!;
         expect(column.parentElement).toBe(block);
+        if (selector === ".sender-col-gap") continue;
         const columnStyle = getComputedStyle(column);
         expect(columnStyle.top).toBe("auto");
         expect(columnStyle.marginTop).toBe("0px");
@@ -226,6 +227,7 @@ test("vertical recipient and sender have separate address and phone columns", ()
   expect(sender.children[0].textContent).toBe(`${draft.senderPostcode} ${draft.senderAddress}`);
   expect(sender.children[1].textContent).toBe(draft.senderName);
   expect(sender.children[2].textContent).toBe(`${t.phoneLabel}${draft.senderPhone.replace(/\D/g, "")}`);
+  // custom preset: no taiwanese spacer; chinese-vertical adds .sender-col-gap between address and name.
   const phone = recipient.querySelector(".phone") as HTMLElement;
   expect(phone.textContent).toBe(draft.recipientPhone.replace(/\D/g, ""));
   expect(phone.className).toContain("grouped");
@@ -315,7 +317,10 @@ test("sample sender and recipient phones share grouped digit style", () => {
   const {container, rerender, unmount} = render(<Envelope draft={draft} settings={settings} />);
   expect(container.querySelector(".sender-name-column")?.textContent).toBe("炁衡物聯科技");
   expect(container.querySelector(".sender-address-column")?.textContent).toBe("臺中市霧峰區本鄉里民生路74巷7號二樓");
+  expect(container.querySelector(".sender-col-gap")).not.toBeNull();
   expect((container.querySelector(".sender-block") as HTMLElement).style.gap).toBe("0mm");
+  expect([...container.querySelector(".sender-block")!.children].map(el => el.className))
+    .toEqual(["sender-address-column", "sender-col-gap", "sender-name-column", "sender-phone-column"]);
   expect([...container.querySelectorAll(".sender-postcode-print .postal-cell")].map(cell => cell.textContent)).toEqual(["4", "1", "3", "0", "1", "4"]);
   const senderPhone = container.querySelector(".sender-phone-column .phone")!;
   const recipientPhone = container.querySelector(".address-phone .phone")!;
