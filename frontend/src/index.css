@@ -1025,7 +1025,8 @@ select {
   width: 1em;
   height: auto;
   max-height: 100%;
-  margin: 0;
+  /* Physical left gap: separates address (right) from company name + phone (further left). */
+  margin: 0 0 0 2.5mm;
   white-space: nowrap;
   overflow-wrap: normal;
 }
@@ -1033,8 +1034,10 @@ select {
   max-width: none;
   overflow: visible;
   align-items: flex-start;
-  /* Center name / address / phone in the left corridor (between margin and frame). */
-  justify-content: center;
+  /* Pack from the right so address stays right; name + phone shift left with the gap. */
+  justify-content: flex-start;
+  column-gap: 0;
+  row-gap: 0;
 }
 .taiwanese .sender-name-column {
   flex: none;
@@ -1044,8 +1047,6 @@ select {
   height: auto;
   max-height: 100%;
   margin: 0;
-  /* Extra air after the larger company column before the address. */
-  margin-inline-end: 0.55em;
   white-space: nowrap;
   overflow-wrap: normal;
 }
