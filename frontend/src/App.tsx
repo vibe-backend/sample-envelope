@@ -3,6 +3,9 @@ import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "./components/ui/dialog";
+import { Checkbox } from "./components/ui/checkbox";
+import { Separator } from "./components/ui/separator";
+import { ScrollArea } from "./components/ui/scroll-area";
 import { fitFontSize } from "./lib/overflow";
 import type { Block } from "./components/Envelope";
 import { Envelope } from "./components/Envelope";
@@ -23,6 +26,8 @@ import {
   resetSettings,
   type Settings,
 } from "./lib/storage";
+import { cn } from "./lib/utils";
+
 function useHash() {
   const [hash, setHash] = useState(window.location.hash || "#/");
   useEffect(() => {
@@ -35,6 +40,36 @@ function useHash() {
 const go = (path: string) => {
   window.location.hash = path;
 };
+
+function CheckRow({
+  id,
+  label,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="check rounded-lg border border-border/70 bg-card px-3 py-2.5">
+      <Checkbox
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(value) => onCheckedChange(value === true)}
+        className="mt-0.5 size-[18px]"
+      />
+      <Label htmlFor={id} className="cursor-pointer text-sm leading-snug font-medium text-foreground">
+        {label}
+      </Label>
+    </div>
+  );
+}
+
 function Preview({
   draft,
   settings,
@@ -120,6 +155,7 @@ function Preview({
     </div>
   );
 }
+
 function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
   const [s, setS] = useState(() => loadSettings(size, draft));
   useEffect(() => {
@@ -230,7 +266,9 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
       });
     };
     return <div className="field" key={key}>
-      <Label htmlFor={key}>{label} <span>{min}–{max}{key.endsWith("Size") ? " pt" : ""}</span></Label>
+      <Label htmlFor={key} className="flex items-center justify-between gap-2">
+        {label} <span className="text-muted-foreground text-xs font-normal">{min}–{max}{key.endsWith("Size") ? " pt" : ""}</span>
+      </Label>
       <div className="number-control">
         <button type="button" aria-label={`${accessibleName} ${t.decrease}`} onClick={() => apply(String(stepValue(Number(value), step, -1)))}>−</button>
         <Input id={key} aria-label={accessibleName} type="number" min={min} max={max} step={step} value={value} aria-invalid={invalid} aria-describedby={invalid ? `${key}-error` : undefined} onChange={e => apply(e.target.value)} />
@@ -241,6 +279,8 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
     </div>;
   };
   const move = (p: Block, x: number, y: number) => { setRaw({}); setS(prev => ({...prev, [`${p}X`]: x, [`${p}Y`]: y})); };
+  const markKeys = (["printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showPhoneLabel", "showTitle", "showSalutation"] as const);
+  const printDialogKeys = (["printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : [])] as const);
   return (
     <>
       <div className="page-heading">
@@ -248,103 +288,144 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           <p className="eyebrow">03 / {size.label}</p>
           <h1>{t.editor}</h1>
         </div>
-        <Button className="kiosk-cta" onClick={print}>{t.print}</Button>
+        <Button className="primary-cta" onClick={print}>{t.print}</Button>
       </div>
       <div className="editor-layout">
-        <section className="preview-panel">
+        <div className="preview-panel">
           <Preview draft={draft} settings={s} onOverflow={reportOverflow} onMove={move} />
-          <div className="print-callout" role="note">{t.printTip}</div>
-        </section>
-        <aside className="panel controls">
-          <div className="dimensions">
-            {number("widthMm", t.width, 50, 500)}
-            {number("heightMm", t.height, 50, 500)}
+          <div className="p-3">
+            <div className="print-callout" role="note">{t.printTip}</div>
           </div>
-          <div className="field">
-            <Label htmlFor="writingMode">{t.direction}</Label>
-            <select
-              id="writingMode"
-              value={s.writingMode}
-              onChange={(e) =>
-                update("writingMode", e.target.value as Settings["writingMode"])
-              }
-            >
-              <option value="vertical-rl">{t.vertical}</option>
-              <option value="horizontal-tb">{t.horizontal}</option>
-            </select>
+        </div>
+        <aside className="controls overflow-hidden">
+          <div className="border-b border-border px-4 py-4">
+            <h2 className="section-title text-lg">{size.label}</h2>
+            <p className="hint mt-1">{oriented.widthMm} × {oriented.heightMm} mm</p>
           </div>
-          <div className="field">
-            <Label htmlFor="orientation">{t.orientation}</Label>
-            <select
-              id="orientation"
-              value={s.orientation}
-              onChange={(e) =>
-                setS(prev => {
-                  const orientation = e.target.value as Settings["orientation"];
-                  const dims = orientedSize(prev, orientation);
-                  setRaw({});
-                  return {...prev, ...dims, orientation};
-                })
-              }
-            >
-              <option value="portrait">{t.portrait}</option>
-              <option value="landscape">{t.landscape}</option>
-            </select>
-          </div>
-          <div className="field">
-            <Label htmlFor="font">{t.font}</Label>
-            <select
-              id="font"
-              value={s.font}
-              onChange={(e) =>
-                update("font", e.target.value as Settings["font"])
-              }
-            >
-              {Object.entries(t.fonts).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-          {s.font === "kai" && kaiMissing && <p className="hint">{t.kaiMissing}</p>}
-          {(["name", "address", "sender"] as const).map((p) => (
-            <fieldset key={p}>
-              <legend>{t[`${p}Block`]}</legend>
-              <div className="control-grid">
-                {number(`${p}Size`, t.fontSize, 6, 72, 0.5, p)}
-                <div className="wide"><b>{t.position}</b><p className="hint">{t.positionHelp}</p></div>
-                {number(`${p}X`, t.x, -500, 500, 0.1, p)}
-                {number(`${p}Y`, t.y, -500, 500, 0.1, p)}
+          <ScrollArea className="h-[min(62vh,720px)]">
+              <div className="space-y-5 p-4">
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="section-index">{t.editorLayoutTab}</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <div className="dimensions">
+                    {number("widthMm", t.width, 50, 500)}
+                    {number("heightMm", t.height, 50, 500)}
+                  </div>
+                  <div className="field">
+                    <Label htmlFor="writingMode">{t.direction}</Label>
+                    <select
+                      id="writingMode"
+                      value={s.writingMode}
+                      onChange={(e) =>
+                        update("writingMode", e.target.value as Settings["writingMode"])
+                      }
+                    >
+                      <option value="vertical-rl">{t.vertical}</option>
+                      <option value="horizontal-tb">{t.horizontal}</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <Label htmlFor="orientation">{t.orientation}</Label>
+                    <select
+                      id="orientation"
+                      value={s.orientation}
+                      onChange={(e) =>
+                        setS(prev => {
+                          const orientation = e.target.value as Settings["orientation"];
+                          const dims = orientedSize(prev, orientation);
+                          setRaw({});
+                          return {...prev, ...dims, orientation};
+                        })
+                      }
+                    >
+                      <option value="portrait">{t.portrait}</option>
+                      <option value="landscape">{t.landscape}</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <Label htmlFor="font">{t.font}</Label>
+                    <select
+                      id="font"
+                      value={s.font}
+                      onChange={(e) =>
+                        update("font", e.target.value as Settings["font"])
+                      }
+                    >
+                      {Object.entries(t.fonts).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {s.font === "kai" && kaiMissing && <p className="hint">{t.kaiMissing}</p>}
+                  {number("spacing", t.spacing, 0, 2, 0.05)}
+                </section>
+
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="section-index">{t.editorBlocksTab}</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  {(["name", "address", "sender"] as const).map((p) => (
+                    <fieldset key={p} className="rounded-lg border border-border bg-card p-3">
+                      <legend className="px-1 text-sm font-semibold">{t[`${p}Block`]}</legend>
+                      <div className="control-grid">
+                        {number(`${p}Size`, t.fontSize, 6, 72, 0.5, p)}
+                        <div className="wide"><b>{t.position}</b><p className="hint">{t.positionHelp}</p></div>
+                        {number(`${p}X`, t.x, -500, 500, 0.1, p)}
+                        {number(`${p}Y`, t.y, -500, 500, 0.1, p)}
+                      </div>
+                      <div className="actions mt-3">
+                        <Button variant="ghost" onClick={() => move(p, 0, 0)}>{t.center}</Button>
+                        <Button variant="ghost" onClick={() => { const defaults = defaultSettings(size, draft); setRaw({}); setS(prev => ({...prev, [`${p}Size`]: defaults[`${p}Size`], [`${p}X`]: 0, [`${p}Y`]: 0})); }}>{t.resetBlock}</Button>
+                      </div>
+                      {overflow.includes(p) && <div role="status" aria-live="polite" className="error mt-2">{t[`${p}Block`]}：{t.overflow}
+                        <Button variant="outline" onClick={() => {
+                          const el = document.querySelector<HTMLElement>(`.preview-area [data-block="${p}"]`);
+                          if (!el) return;
+                          const fitted = fitFontSize(s[`${p}Size`], 6, value => { el.style.fontSize = `${value}pt`; return el; });
+                          setRaw({}); update(`${p}Size`, fitted);
+                        }}>{t.autoFit}</Button>
+                      </div>}
+                    </fieldset>
+                  ))}
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="section-index">{t.editorMarksTab}</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <CheckRow
+                    id="phones"
+                    label={t.phones}
+                    checked={s.phones && !!(draft.recipientPhone.trim() || draft.senderPhone.trim())}
+                    disabled={!draft.recipientPhone.trim() && !draft.senderPhone.trim()}
+                    onCheckedChange={(checked) => update("phones", checked)}
+                  />
+                  <CheckRow
+                    id="phoneGroups"
+                    label={t.phoneGroups}
+                    checked={s.phoneGroups}
+                    onCheckedChange={(checked) => update("phoneGroups", checked)}
+                  />
+                  {!draft.recipientPhone.trim() && !draft.senderPhone.trim() && <p className="hint">{t.noPhones}</p>}
+                  {markKeys.map((k) => (
+                    <CheckRow
+                      key={k}
+                      id={k}
+                      label={t[k]}
+                      checked={s[k]}
+                      onCheckedChange={(checked) => update(k, checked)}
+                    />
+                  ))}
+                </section>
               </div>
-              <div className="actions">
-                <Button variant="ghost" onClick={() => move(p, 0, 0)}>{t.center}</Button>
-                <Button variant="ghost" onClick={() => { const defaults = defaultSettings(size, draft); setRaw({}); setS(prev => ({...prev, [`${p}Size`]: defaults[`${p}Size`], [`${p}X`]: 0, [`${p}Y`]: 0})); }}>{t.resetBlock}</Button>
-              </div>
-              {overflow.includes(p) && <div role="status" aria-live="polite" className="error">{t[`${p}Block`]}：{t.overflow}
-                <Button variant="outline" onClick={() => {
-                  const el = document.querySelector<HTMLElement>(`.preview-area [data-block="${p}"]`);
-                  if (!el) return;
-                  const fitted = fitFontSize(s[`${p}Size`], 6, value => { el.style.fontSize = `${value}pt`; return el; });
-                  setRaw({}); update(`${p}Size`, fitted);
-                }}>{t.autoFit}</Button>
-              </div>}
-            </fieldset>
-          ))}
-          {number("spacing", t.spacing, 0, 2, 0.05)}
-          {(["phones", "phoneGroups", "printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : []), "showAddressLabel", "showPhoneLabel", "showTitle", "showSalutation"] as const).map((k) => (
-            <label className="check" key={k}>
-              <input
-                type="checkbox"
-                disabled={k === "phones" && !draft.recipientPhone.trim() && !draft.senderPhone.trim()}
-                checked={k === "phones" ? s[k] && !!(draft.recipientPhone.trim() || draft.senderPhone.trim()) : s[k]}
-                onChange={(e) => update(k, e.target.checked)}
-              />
-              {t[k]}
-            </label>
-          ))}
-          {!draft.recipientPhone.trim() && !draft.senderPhone.trim() && <p className="hint">{t.noPhones}</p>}
-          <div className="actions">
+          </ScrollArea>
+          <div className="actions justify-between gap-2 border-t border-border px-4 py-3">
             <Button variant="outline" onClick={() => { setRaw({}); setS(resetSettings(size, draft)); }}>
               {t.reset}
             </Button>
@@ -361,16 +442,27 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
           <ol className="print-steps"><li>{t.printPaper}：{oriented.widthMm}×{oriented.heightMm} mm</li>{t.printSteps.map(step => <li key={step}>{step}</li>)}</ol>
           <p className="save-pdf-tip">{t.printTipPdf.replace("{size}", `${oriented.widthMm}×${oriented.heightMm}`)}</p>
           {pdfError && <p className="error" role="alert">{t.savePdfError}</p>}
-          <fieldset className="print-items">
+          <fieldset className="print-items space-y-2">
             <legend>{t.printItems}</legend>
-            {(["printOuterBorder", ...(size.id === "chinese-vertical" ? ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const : s.writingMode === "horizontal-tb" ? ["boxes"] as const : [])] as const).map((k) => (
-              <label className="check" key={k}>
-                <input type="checkbox" checked={s[k]} onChange={(e) => update(k, e.target.checked)} />
-                {t[k]}
-              </label>
+            {printDialogKeys.map((k) => (
+              <CheckRow
+                key={k}
+                id={`print-dialog-${k}`}
+                label={t[k]}
+                checked={s[k]}
+                onCheckedChange={(checked) => update(k, checked)}
+              />
             ))}
           </fieldset>
-          <label className="check"><input type="checkbox" checked={skip} onChange={e => {setSkip(e.target.checked); try {localStorage.setItem("sample-envelope:skip-print-dialog", String(e.target.checked));} catch { /* unavailable */ }}} />{t.skipPrint}</label>
+          <CheckRow
+            id="skip-print-dialog"
+            label={t.skipPrint}
+            checked={skip}
+            onCheckedChange={(checked) => {
+              setSkip(checked);
+              try { localStorage.setItem("sample-envelope:skip-print-dialog", String(checked)); } catch { /* unavailable */ }
+            }}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialog(false)} disabled={pdfBusy}>{t.cancel}</Button>
             <Button onClick={() => void runPrint()} disabled={pdfBusy}>
@@ -418,7 +510,7 @@ export default function App() {
   const step = editorSize ? 2 : hash === "#/gallery" ? 1 : 0;
   const field = (key: keyof Draft, label: string, required = false) => (
     <div className={`field ${key.endsWith("Address") ? "wide" : ""}`} key={key}>
-      <Label htmlFor={key}>
+      <Label htmlFor={key} className="flex items-center justify-between gap-2">
         {label}
         <span className="optional">{required ? t.required : t.optional}</span>
       </Label>
@@ -466,18 +558,18 @@ export default function App() {
     </div>
   );
   return (
-    <div className="kiosk-shell">
-      <header className="kiosk-header">
+    <div className="app-shell">
+      <header className="app-header">
         <a href="#/" className="brand">
-          <span className="brand-icon" aria-hidden="true">印</span>
+          <span className="brand-mark" aria-hidden="true">箋</span>
           <span className="brand-text">
             <strong>{t.app}</strong>
-            <small>{t.kioskService}</small>
+            <small>{t.brandNote}</small>
           </span>
         </a>
         <span className="header-note">{t.tagline}</span>
       </header>
-      <main className="kiosk-main">
+      <main className="app-main">
         <nav aria-label={t.app} className="steps">
           {t.steps.map((label, i) => (
             <span
@@ -519,12 +611,14 @@ export default function App() {
               }}
             >
               <div className="form-grid">
-                <section className="panel">
-                  <h2>
-                    <span>01</span>
-                    {t.recipient}
-                  </h2>
-                  <div className="fields">
+                <section className="panel overflow-hidden">
+                  <div className="border-b border-border px-6 py-4">
+                    <h2 className="section-title">
+                      <span className="section-index">01</span>
+                      {t.recipient}
+                    </h2>
+                  </div>
+                  <div className="fields p-6">
                     {field("recipientName", t.name, true)}
                     {select("recipientTitle", t.title, t.titles)}
                     {draft.recipientTitle === t.titles[6] &&
@@ -535,12 +629,14 @@ export default function App() {
                     {field("recipientPhone", t.phone)}
                   </div>
                 </section>
-                <section className="panel">
-                  <h2>
-                    <span>02</span>
-                    {t.sender}
-                  </h2>
-                  <div className="fields">
+                <section className="panel overflow-hidden">
+                  <div className="border-b border-border px-6 py-4">
+                    <h2 className="section-title">
+                      <span className="section-index">02</span>
+                      {t.sender}
+                    </h2>
+                  </div>
+                  <div className="fields p-6">
                     {field("senderName", t.name)}
                     {field("senderPostcode", t.postcode)}
                     {field("senderAddress", t.address)}
@@ -561,7 +657,7 @@ export default function App() {
                   >
                     {t.clear}
                   </Button>
-                  <Button type="submit" className="kiosk-cta">{t.next}</Button>
+                  <Button type="submit" className="primary-cta">{t.next}</Button>
                 </div>
               </div>
             </form>
@@ -581,7 +677,7 @@ export default function App() {
             <div className="gallery">
               {sizes.map((size) => (
                 <button
-                  className="size-card"
+                  className={cn("size-card group")}
                   key={size.id}
                   onClick={() => go(`/editor/${size.id}`)}
                 >
@@ -595,7 +691,7 @@ export default function App() {
                       <strong>{size.label}</strong>{" "}
                       <span>{size.id === "custom" ? t.galleryCustom : `${t.galleryOrientation[size.defaultOrientation]}・${t.galleryWritingMode[size.defaultWritingMode]}`}</span>
                     </div>
-                    <span>
+                    <span className="text-muted-foreground text-xs font-medium tracking-wide">
                       {size.widthMm} × {size.heightMm} mm
                     </span>
                   </div>
@@ -607,7 +703,7 @@ export default function App() {
           <Editor key={editorSize!.id} size={editorSize!} draft={draft} />
         )}
       </main>
-      <footer className="kiosk-footer">{t.footer}</footer>
+      <footer className="app-footer">{t.footer}</footer>
     </div>
   );
 }
