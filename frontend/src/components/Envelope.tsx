@@ -137,7 +137,7 @@ export function Envelope({
   );
   const size = orientedSize(s, s.orientation);
   const addressArea = verticalAddressArea(size.heightMm, taiwanese);
-  const senderArea = verticalSenderArea(size.widthMm, size.heightMm);
+  const senderArea = verticalSenderArea(size.heightMm);
   const block = (prefix: "name" | "address" | "sender"): CSSProperties => ({
     fontSize: `${s[`${prefix}Size`]}pt`,
     transform: `translate(${mmToCss(s[`${prefix}X`])}, ${mmToCss(s[`${prefix}Y`])})`,

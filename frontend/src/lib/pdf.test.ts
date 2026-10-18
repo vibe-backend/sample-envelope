@@ -2,7 +2,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const domToPng = vi.fn(async () => "data:image/png;base64,aaa");
 vi.mock("modern-screenshot", () => ({
-  domToPng: (...args: unknown[]) => domToPng(...args),
+  domToPng: (...args: unknown[]) =>
+    (domToPng as unknown as (...a: unknown[]) => Promise<string>)(...args),
 }));
 
 const embedPng = vi.fn(async () => ({ width: 10, height: 10 }));
@@ -58,7 +59,8 @@ test("buildEnvelopePdf throws when envelope is missing", async () => {
   document.body.innerHTML = "";
   vi.resetModules();
   vi.doMock("modern-screenshot", () => ({
-    domToPng: (...args: unknown[]) => domToPng(...args),
+    domToPng: (...args: unknown[]) =>
+      (domToPng as unknown as (...a: unknown[]) => Promise<string>)(...args),
   }));
   vi.doMock("pdf-lib", () => ({
     PDFDocument: { create: vi.fn(async () => ({ addPage, embedPng, save })) },

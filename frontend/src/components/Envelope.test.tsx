@@ -135,8 +135,9 @@ test("printed postcode rows have compact physical geometry and anchored, centred
       const captionStyle = getComputedStyle(caption);
       expect(captionStyle.display).toBe("flex");
       expect(captionStyle.justifyContent).toBe("space-between");
-      expect(caption.getAttribute("aria-label")).toBe(t[`${kind}PostcodeCaption`]);
-      expect([...caption.querySelectorAll(":scope > span")].map(el => el.textContent).join("")).toBe(t[`${kind}PostcodeCaption`]);
+      const captionText = kind === "recipient" ? t.recipientPostcodeCaption : t.senderPostcodeCaption;
+      expect(caption.getAttribute("aria-label")).toBe(captionText);
+      expect([...caption.querySelectorAll(":scope > span")].map(el => el.textContent).join("")).toBe(captionText);
       expect(mm(captionStyle.width) || mm(getComputedStyle(row).width)).toBeCloseTo(kind === "recipient" ? 47 : 33, 3);
     }
   } finally {
