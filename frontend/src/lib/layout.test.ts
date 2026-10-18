@@ -11,13 +11,13 @@ const columns = (text: string, height: number, em: number) => Math.ceil([...text
 test("20pt sample recipient address fits one column with a phone column", () => {
   const draft = { ...emptyDraft, ...t.sampleData };
   const settings = defaultSettings(sizes[0], draft);
-  const area = verticalAddressArea(252, true);
+  const area = verticalAddressArea(251, true);
   const em = settings.addressSize * 25.4 / 72;
   expect(settings.addressSize).toBe(20);
   expect(draft.recipientPostcode).toBe("106409");
-  expect(area.topMm).toBe(65);
+  expect(area.topMm).toBe(64);
   expect(area.heightMm).toBe(159);
-  expect(area.topMm + area.heightMm).toBe(224);
+  expect(area.topMm + area.heightMm).toBe(223);
   expect(area.topMm).toBeGreaterThan(35 + 9 + 1 + 5.5 * 25.4 / 72);
   const width = (address: string) => (columns(`${t.addressLabel}${address}`, area.heightMm, em) + columns(`${t.phoneLabel}${draft.recipientPhone}`, area.heightMm, em)) * em * 1.3;
   expect(columns(`${t.addressLabel}${draft.recipientAddress}`, area.heightMm, em)).toBe(1);
@@ -30,7 +30,7 @@ test("20pt sample recipient address fits one column with a phone column", () => 
 test("16pt sample sender wraps above the postcode and clear of the frame", () => {
   const draft = { ...emptyDraft, ...t.sampleData };
   const settings = defaultSettings(sizes[0], draft);
-  const area = verticalSenderArea(252);
+  const area = verticalSenderArea(251);
   const em = settings.senderSize * 25.4 / 72;
   expect(settings.senderSize).toBe(16);
   expect(draft.senderName).toBe("炁衡物聯科技");
@@ -39,8 +39,8 @@ test("16pt sample sender wraps above the postcode and clear of the frame", () =>
   expect(area.lineHeight).toBe(1.05);
   expect(area.leftMm).toBe(6);
   expect(area.leftMm + area.widthMm).toBe(42);
-  expect(area.topMm).toBeCloseTo(22 + 230 * 0.40, 5);
-  expect(area.topMm + area.heightMm).toBeLessThanOrEqual(252 - 14 - 6);
+  expect(area.topMm).toBeCloseTo(21 + 230 * 0.40, 5);
+  expect(area.topMm + area.heightMm).toBeLessThanOrEqual(251 - 14 - 6);
   expect(columns(draft.senderName, area.heightMm, em)).toBe(1);
   expect(columns(`${t.phoneLabel}${draft.senderPhone}`, area.heightMm, em)).toBe(1);
   // Single-column address (nowrap); address + name + phone + company margin fit the block.

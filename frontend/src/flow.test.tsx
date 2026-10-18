@@ -35,7 +35,7 @@ test("sample to gallery to editor and physical print size", async () => {
   const button = await screen.findByRole("button", { name: /列印/ });
   await waitFor(() =>
     expect(document.getElementById("page-size")?.textContent).toContain(
-      "120mm 252mm",
+      "120mm 251mm",
     ),
   );
   expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
@@ -48,7 +48,7 @@ test("sample to gallery to editor and physical print size", async () => {
   fireEvent.click(button);
   expect(createEnvelopePdfUrl).not.toHaveBeenCalled();
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", {name: t.print}));
-  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 252 }));
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 251 }));
   const preview = await screen.findByRole("dialog");
   expect(within(preview).getByTitle(t.pdfPreview)).toBeTruthy();
   expect((within(preview).getByTitle(t.pdfPreview) as HTMLIFrameElement).src).toContain("blob:mock-pdf");
@@ -124,7 +124,7 @@ test("print dialog can turn off outline and red frame before printing", async ()
   expect(document.querySelector(".recipient-frame")).toBeNull();
   expect(document.querySelector(".outer-border")).toBeNull();
   fireEvent.click(within(dialog).getByRole("button", {name: t.print}));
-  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 252 }));
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 251 }));
 });
 
 test("print opens a PDF iframe preview before the print dialog", async () => {
@@ -225,7 +225,7 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(410);
   try {
     render(<App />);
-    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 252/})).toBeTruthy();
+    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 251/})).toBeTruthy();
     expect(screen.getByRole("button", {name: /DL.*橫式・西式橫書/})).toBeTruthy();
     for (const size of sizes) {
       const descriptor = size.id === "custom" ? "自訂尺寸" : size.id === "chinese-vertical" ? "直式・中文直書" : "橫式・西式橫書";
