@@ -1,5 +1,5 @@
 /** Empty band at the top of the taller envelope; all front marks sit below this. */
-export const topPadMm = 22;
+export const topPadMm = 21;
 
 /** Taiwanese recipient red frame — address columns share this top edge. */
 export const recipientFrameMm = { topMm: 38 + topPadMm, heightMm: 159, widthMm: 33 };

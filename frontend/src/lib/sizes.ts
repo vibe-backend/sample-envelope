@@ -3,12 +3,12 @@ export type Orientation = "portrait" | "landscape";
 export type WritingMode = "vertical-rl" | "horizontal-tb";
 // Chunghwa Post: https://www.post.gov.tw/post/internet/Customer_service/index.jsp?ID=16020316
 // 標準信封長 140–235 mm、寬 90–165 mm，長邊至少為短邊 1.3 倍（直橫式相同）。
-// 120×252 mm（相對常見 120×230 再加 2.2 cm 頂部空白，對齊實體信封）。
+// 120×251 mm（相對常見 120×230 再加 2.1 cm 頂部空白，對齊實體信封）。
 export const sizes = [
   {
     id: "chinese-vertical",
     widthMm: 120,
-    heightMm: 252,
+    heightMm: 251,
     defaultOrientation: "portrait",
     defaultWritingMode: "vertical-rl",
   },

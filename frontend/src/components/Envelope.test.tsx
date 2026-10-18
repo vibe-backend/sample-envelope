@@ -26,11 +26,11 @@ test("Chinese vertical columns share a container and start at the same top", () 
     expect(nameStyle.flexDirection).toBe("row");
     expect(nameStyle.alignItems).toBe("center");
     expect(nameStyle.justifyContent).toBe("flex-start");
-    expect(css.match(/\.recipient-frame\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm); top: 60mm; width: 33mm; height: 159mm");
+    expect(css.match(/\.recipient-frame\s*\{([^}]+)\}/)![1]).toContain("left: calc(50% - 16.5mm); top: 59mm; width: 33mm; height: 159mm");
     expect(container.querySelector(".envelope.has-recipient-frame")).not.toBeNull();
     const nameRule = css.match(/\.taiwanese\.has-recipient-frame \.recipient-name\s*\{([^}]+)\}/)![1];
     expect(nameRule).toMatch(/left:\s*calc\(50% - 16\.5mm \+ 3\.25mm\)/);
-    expect(nameRule).toMatch(/top:\s*calc\(60mm \+ 3\.25mm \+ 10mm\)/);
+    expect(nameRule).toMatch(/top:\s*calc\(59mm \+ 3\.25mm \+ 10mm\)/);
     expect(nameRule).toMatch(/width:\s*calc\(33mm - 6\.5mm\)/);
     expect(nameRule).toMatch(/height:\s*calc\(159mm - 6\.5mm - 10mm\)/);
     for (const selector of [".recipient-title", ".salutation"]) {
@@ -217,7 +217,7 @@ test("vertical recipient and sender have separate address and phone columns", ()
   expect(container.querySelector(".postcode-boxes")).toBeNull();
   const recipient = container.querySelector(".recipient-address")!;
   expect((recipient as HTMLElement).style.height).toBe(`${verticalAddressArea(sizes[0].heightMm).heightMm}mm`);
-  expect((recipient as HTMLElement).style.top).toBe(`${8 + 22}mm`);
+  expect((recipient as HTMLElement).style.top).toBe(`${8 + 21}mm`);
   expect(recipient.querySelector(".postcode-space")?.textContent).toBe(" ");
   expect(recipient.children.length).toBe(2);
   expect(recipient.children[0].textContent).toBe(`${t.addressLabel}${draft.recipientPostcode} ${draft.recipientAddress}`);
@@ -354,7 +354,7 @@ test("frame fit participates in overflow warnings, including moved content", () 
   const rect = (left: number, top: number, right: number, bottom: number) => ({left, top, right, bottom, width: right-left, height: bottom-top, x:left, y:top, toJSON: () => ({})});
   let moved = false;
   const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    if (this.classList.contains("envelope")) return rect(0, 0, 120, 252);
+    if (this.classList.contains("envelope")) return rect(0, 0, 120, 251);
     if (this.classList.contains("recipient-frame")) return rect(43.5, 58, 76.5, 217);
     if (this.classList.contains("recipient-name")) return moved ? rect(46.75, 61.25, 73.25, 220) : rect(46.75, 61.25, 73.25, 213.75);
     return rect(0, 0, 0, 0);
@@ -399,11 +399,11 @@ test("stamp retains its double border at 20mm and columns enable wrapping", () =
   const css = readFileSync("src/index.css", "utf8");
   expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("width: 20mm; height: 20mm");
   expect(css).toMatch(/\.stamp-box > div\s*\{[^}]*border:/);
-  expect(css.match(/\.postal-notice\s*\{([^}]+)\}/)![1]).toContain("right: 8mm; top: 64mm");
+  expect(css.match(/\.postal-notice\s*\{([^}]+)\}/)![1]).toContain("right: 8mm; top: 63mm");
   const mailCheck = css.match(/\.mail-check\s*\{([^}]+)\}/)![1];
   expect(mailCheck).toContain("left: 8mm");
-  expect(mailCheck).toContain("top: 77mm");
-  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("top: 43mm");
+  expect(mailCheck).toContain("top: 76mm");
+  expect(css.match(/\.stamp-box\s*\{([^}]+)\}/)![1]).toContain("top: 42mm");
   expect(mailCheck).toContain("width: 21mm");
   expect(mailCheck).toContain("height: 26mm");
   expect(css).toContain("white-space: nowrap");

@@ -93,7 +93,7 @@ export const t = {
   printRecipientFrame: "印收件人紅框",
   printOuterBorder: "印外框（普通紙試印用）",
   printNotice: "印注意事項",
-  showTopPad: "顯示頂部空白區（2.2 cm）",
+  showTopPad: "顯示頂部空白區（2.1 cm）",
   recipientPostcodeCaption: "請寫收件人郵遞區號",
   senderPostcodeCaption: "寄件人郵遞區號",
   stampColumns: ["郵票", "正貼"],

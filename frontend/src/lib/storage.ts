@@ -65,7 +65,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v11:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v12:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
