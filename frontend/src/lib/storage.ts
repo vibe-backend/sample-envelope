@@ -51,8 +51,9 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   nameY: 0,
   addressX: 0,
   addressY: 0,
-  senderX: 0,
-  senderY: 0,
+  // Calibrated on physical 中式直式 (user workstation nudge).
+  senderX: s.id === "chinese-vertical" ? -12.3 : 0,
+  senderY: s.id === "chinese-vertical" ? -2.3 : 0,
   phoneGroups: s.defaultWritingMode === "vertical-rl",
   phones: !!(draft.recipientPhone.trim() || draft.senderPhone.trim()),
   boxes: false,
@@ -64,7 +65,7 @@ export const defaultSettings = (s: EnvelopeSize, draft: Draft = emptyDraft): Set
   ...orientedSize(s, s.defaultOrientation),
 });
 export const draftKey = "sample-envelope:draft:v1";
-export const settingsKey = (id: string) => `sample-envelope:settings:v9:${id}`;
+export const settingsKey = (id: string) => `sample-envelope:settings:v11:${id}`;
 function load<T extends object>(key: string, fallback: T): T {
   try {
     const data: unknown = JSON.parse(localStorage.getItem(key) || "null");
