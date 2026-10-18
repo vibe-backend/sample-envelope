@@ -314,8 +314,8 @@ function Editor({ size, draft }: { size: EnvelopeSize; draft: Draft }) {
               <div className="control-grid">
                 {number(`${p}Size`, t.fontSize, 6, 72, 0.5, p)}
                 <div className="wide"><b>{t.position}</b><p className="hint">{t.positionHelp}</p></div>
-                {number(`${p}X`, t.x, -500, 500, 1, p)}
-                {number(`${p}Y`, t.y, -500, 500, 1, p)}
+                {number(`${p}X`, t.x, -500, 500, 0.1, p)}
+                {number(`${p}Y`, t.y, -500, 500, 0.1, p)}
               </div>
               <div className="actions">
                 <Button variant="ghost" onClick={() => move(p, 0, 0)}>{t.center}</Button>
