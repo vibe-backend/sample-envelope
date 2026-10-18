@@ -3,12 +3,12 @@ export type Orientation = "portrait" | "landscape";
 export type WritingMode = "vertical-rl" | "horizontal-tb";
 // Chunghwa Post: https://www.post.gov.tw/post/internet/Customer_service/index.jsp?ID=16020316
 // 標準信封長 140–235 mm、寬 90–165 mm，長邊至少為短邊 1.3 倍（直橫式相同）。
-// 120×250 mm（相對常見 120×230 再加 2 cm 高度，對齊實體信封）。
+// 120×252 mm（相對常見 120×230 再加 2.2 cm 頂部空白，對齊實體信封）。
 export const sizes = [
   {
     id: "chinese-vertical",
     widthMm: 120,
-    heightMm: 250,
+    heightMm: 252,
     defaultOrientation: "portrait",
     defaultWritingMode: "vertical-rl",
   },
@@ -33,5 +33,8 @@ export function orientedSize(
   const heightMm = Math.max(size.widthMm, size.heightMm);
   return orientation === "portrait" ? { widthMm, heightMm } : { widthMm: heightMm, heightMm: widthMm };
 }
-export const pageRule = (size: {widthMm: number; heightMm: number}) =>
-  `@page { size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0 }`;
+/** Force print/PDF page box to the envelope — avoid browser A4 default. */
+export const pageRule = (size: {widthMm: number; heightMm: number}) => {
+  const box = `size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0`;
+  return `@page { ${box} } @media print { @page { ${box} } }`;
+};

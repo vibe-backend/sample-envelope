@@ -4,7 +4,7 @@ export const mmToCss = (mm: number) => `${mm}mm`;
 
 /** Multiplier so on-screen "100%" matches a physical ruler/envelope (browsers use 96 CSS dpi). */
 export const calibrationKey = "sample-envelope:screen-calibration:v1";
-/** Measured against a physical 120×250 mm Taiwanese envelope on the primary workstation display. */
+/** Measured against a physical 120×252 mm Taiwanese envelope on the primary workstation display. */
 export const DEFAULT_CALIBRATION = 0.86;
 export function loadCalibration() {
   try {

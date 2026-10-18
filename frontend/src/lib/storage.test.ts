@@ -25,7 +25,7 @@ test("draft saves, restores and resets", () => {
 test("settings are isolated by size and reset", () => {
   const s = { ...defaultSettings(sizes[0]), nameSize: 30 };
   saveSettings(sizes[0].id, s);
-  expect(localStorage.getItem(`sample-envelope:settings:v8:${sizes[0].id}`)).toBe(JSON.stringify(s));
+  expect(localStorage.getItem(`sample-envelope:settings:v9:${sizes[0].id}`)).toBe(JSON.stringify(s));
   expect(loadSettings(sizes[0])).toEqual(s);
   expect(loadSettings(sizes[1])).toEqual(defaultSettings(sizes[1]));
   resetSettings(sizes[0]);
@@ -63,18 +63,18 @@ test("stale phones:false is restored when the draft has phone numbers", () => {
 });
 
 test("previous settings cannot override the calibrated defaults", () => {
-  for (const version of [1, 4, 5, 6, 7]) {
+  for (const version of [1, 4, 5, 6, 7, 8]) {
     localStorage.setItem(`sample-envelope:settings:v${version}:${sizes[0].id}`, JSON.stringify({boxes: true, senderSize: 13, addressSize: 12, widthMm: 120, heightMm: 230}));
   }
-  expect(settingsKey(sizes[0].id)).toBe(`sample-envelope:settings:v8:${sizes[0].id}`);
+  expect(settingsKey(sizes[0].id)).toBe(`sample-envelope:settings:v9:${sizes[0].id}`);
   expect(loadSettings(sizes[0])).toEqual(defaultSettings(sizes[0]));
-  expect(defaultSettings(sizes[0])).toMatchObject({widthMm: 120, heightMm: 250});
+  expect(defaultSettings(sizes[0])).toMatchObject({widthMm: 120, heightMm: 252});
 });
 
  test("preprinted defaults belong only to the Chinese preset", () => {
   for (const size of sizes) {
     const settings = defaultSettings(size);
-    for (const key of ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice", "printOuterBorder"] as const) {
+    for (const key of ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice", "printOuterBorder", "showTopPad"] as const) {
       expect(settings[key]).toBe(size.id === "chinese-vertical");
     }
   }

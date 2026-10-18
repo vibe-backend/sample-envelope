@@ -11,14 +11,21 @@ import App from "./App";
 import { t } from "./i18n/zh-Hant";
 import { sizes } from "./lib/sizes";
 import { mmToPx } from "./lib/units";
+
+const createEnvelopePdfUrl = vi.fn().mockResolvedValue("blob:mock-pdf");
+vi.mock("./lib/pdf", () => ({
+  createEnvelopePdfUrl: (...args: unknown[]) => createEnvelopePdfUrl(...args),
+}));
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
   window.location.hash = "/";
+  createEnvelopePdfUrl.mockClear();
+  createEnvelopePdfUrl.mockResolvedValue("blob:mock-pdf");
 });
 test("sample to gallery to editor and physical print size", async () => {
   window.location.hash = "/";
-  const print = vi.spyOn(window, "print").mockImplementation(() => {});
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: t.sample }));
   fireEvent.click(screen.getByRole("button", { name: new RegExp(t.next) }));
@@ -28,21 +35,23 @@ test("sample to gallery to editor and physical print size", async () => {
   const button = await screen.findByRole("button", { name: /列印/ });
   await waitFor(() =>
     expect(document.getElementById("page-size")?.textContent).toContain(
-      "120mm 250mm",
+      "120mm 252mm",
     ),
   );
   expect((screen.getByRole("checkbox", {name: t.phones}) as HTMLInputElement).checked).toBe(true);
   expect(screen.queryByRole("checkbox", {name: t.boxes})).toBeNull();
-  for (const key of ["printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const) {
+  for (const key of ["showTopPad", "printPostcodeBoxes", "printStampBox", "printMailCheck", "printRecipientFrame", "printNotice"] as const) {
     expect((screen.getByRole("checkbox", {name: t[key]}) as HTMLInputElement).checked).toBe(true);
   }
   expect((screen.getByRole("checkbox", {name: t.showAddressLabel}) as HTMLInputElement).checked).toBe(true);
   expect((screen.getByRole("checkbox", {name: t.showPhoneLabel}) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(button);
-  expect(print).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", {name: t.print}));
-  expect(print).toHaveBeenCalledOnce();
-  print.mockRestore();
+  expect(createEnvelopePdfUrl).not.toHaveBeenCalled();
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", {name: t.print}));
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 252 }));
+  const preview = await screen.findByRole("dialog");
+  expect(within(preview).getByTitle(t.pdfPreview)).toBeTruthy();
+  expect((within(preview).getByTitle(t.pdfPreview) as HTMLIFrameElement).src).toContain("blob:mock-pdf");
 });
 
 for (const confirmed of [false, true]) {
@@ -79,34 +88,34 @@ test("custom fields are physical W×H; toggle swaps fields and page", async () =
   expect(font.getAttribute("aria-invalid")).toBe("true");
 });
 
-test("print dialog cancellation and remembered opt-out", () => {
+test("print dialog cancellation and remembered opt-out", async () => {
   window.location.hash = "/editor/custom";
-  const print = vi.spyOn(window, "print").mockImplementation(() => {});
   render(<App />);
-  fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
+  fireEvent.click(screen.getByRole("button", {name:/列印/}));
   expect(screen.getByRole("dialog")).toBeTruthy();
   expect(screen.getByText(t.printItems)).toBeTruthy();
+  expect(screen.getByText(t.printTipPdf.replace("{size}", "120×180"))).toBeTruthy();
   expect(screen.getByRole("checkbox", {name: t.printOuterBorder})).toBeTruthy();
   fireEvent.click(screen.getByRole("button", {name:t.cancel}));
-  expect(print).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
+  expect(createEnvelopePdfUrl).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", {name: t.print}));
   fireEvent.click(screen.getByRole("checkbox", {name:t.skipPrint}));
-  fireEvent.click(screen.getByRole("button", {name:t.print}));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", {name: t.print}));
   expect(localStorage.getItem("sample-envelope:skip-print-dialog")).toBe("true");
-  fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
-  expect(print).toHaveBeenCalledTimes(2);
-  expect(screen.queryByRole("dialog")).toBeNull();
-  print.mockRestore();
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledTimes(1));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", {name: t.closePreview}));
+  fireEvent.click(screen.getByRole("button", {name: t.print}));
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledTimes(2));
+  expect(within(screen.getByRole("dialog")).getByTitle(t.pdfPreview)).toBeTruthy();
 });
 
-test("print dialog can turn off outline and red frame before printing", () => {
+test("print dialog can turn off outline and red frame before printing", async () => {
   window.location.hash = "/editor/chinese-vertical";
-  const print = vi.spyOn(window, "print").mockImplementation(() => {});
   render(<App />);
-  fireEvent.click(screen.getByRole("button", {name:/列印 ↗/}));
+  fireEvent.click(screen.getByRole("button", {name:/列印/}));
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).getByText(t.printItems)).toBeTruthy();
-  for (const key of ["printOuterBorder", "printRecipientFrame", "printStampBox", "printMailCheck", "printPostcodeBoxes", "printNotice"] as const) {
+  for (const key of ["printOuterBorder", "showTopPad", "printRecipientFrame", "printStampBox", "printMailCheck", "printPostcodeBoxes", "printNotice"] as const) {
     const box = within(dialog).getByRole<HTMLInputElement>("checkbox", {name: t[key]});
     expect(box.checked).toBe(true);
     fireEvent.click(box);
@@ -115,8 +124,26 @@ test("print dialog can turn off outline and red frame before printing", () => {
   expect(document.querySelector(".recipient-frame")).toBeNull();
   expect(document.querySelector(".outer-border")).toBeNull();
   fireEvent.click(within(dialog).getByRole("button", {name: t.print}));
-  expect(print).toHaveBeenCalledOnce();
-  print.mockRestore();
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({ widthMm: 120, heightMm: 252 }));
+});
+
+test("print opens a PDF iframe preview before the print dialog", async () => {
+  window.location.hash = "/editor/custom";
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", {name: /列印/}));
+  const settings = screen.getByRole("dialog");
+  expect(screen.getByText(t.printTipPdf.replace("{size}", "120×180"))).toBeTruthy();
+  expect(within(settings).queryByRole("button", {name: /下載/})).toBeNull();
+  fireEvent.click(within(settings).getByRole("button", {name: t.print}));
+  await waitFor(() => expect(createEnvelopePdfUrl).toHaveBeenCalledWith({
+    widthMm: 120,
+    heightMm: 180,
+  }));
+  const preview = await screen.findByRole("dialog");
+  expect(within(preview).getByText(t.pdfPreview)).toBeTruthy();
+  const frame = within(preview).getByTitle(t.pdfPreview) as HTMLIFrameElement;
+  expect(frame.src).toContain("blob:mock-pdf");
+  expect(within(preview).getByRole("button", {name: t.print})).toBeTruthy();
 });
 
 test("block steppers and number inputs have distinct accessible names", () => {
@@ -198,7 +225,7 @@ test("gallery cards describe presets and hide non-focusable true-size previews",
   const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(410);
   try {
     render(<App />);
-    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 250/})).toBeTruthy();
+    expect(screen.getByRole("button", {name: /中式直式.*直式・中文直書.*120 × 252/})).toBeTruthy();
     expect(screen.getByRole("button", {name: /DL.*橫式・西式橫書/})).toBeTruthy();
     for (const size of sizes) {
       const descriptor = size.id === "custom" ? "自訂尺寸" : size.id === "chinese-vertical" ? "直式・中文直書" : "橫式・西式橫書";

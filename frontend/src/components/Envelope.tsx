@@ -6,7 +6,7 @@ import { orientedSize } from "../lib/sizes";
 import { mmToCss } from "../lib/units";
 import { t } from "../i18n/zh-Hant";
 import { isOverflowing, isOutsideInset } from "../lib/overflow";
-import { verticalAddressArea, verticalSenderArea } from "../lib/layout";
+import { topPadMm, verticalAddressArea, verticalSenderArea } from "../lib/layout";
 export type Block = "name" | "address" | "sender";
 const fonts = {
   serif: '"Noto Serif TC","Songti TC","PMingLiU",serif',
@@ -175,6 +175,13 @@ export function Envelope({
       }}
     >
       {s.printOuterBorder && <div className="outer-border" aria-hidden="true" />}
+      {taiwanese && s.showTopPad && (
+        <div
+          className="preprinted top-pad-guide"
+          style={{ height: mmToCss(topPadMm) }}
+          aria-hidden="true"
+        />
+      )}
       {printedPostcodes && <>
         <PrintedPostcode kind="recipient" value={d.recipientPostcode} showBoxes={s.printPostcodeBoxes} />
         <PrintedPostcode kind="sender" value={d.senderPostcode} showBoxes={s.printPostcodeBoxes} />
