@@ -30,7 +30,7 @@ test("20pt sample recipient address fits one column with a phone column", () => 
 test("16pt sample sender wraps above the postcode and clear of the frame", () => {
   const draft = { ...emptyDraft, ...t.sampleData };
   const settings = defaultSettings(sizes[0], draft);
-  const area = verticalSenderArea(120, 252);
+  const area = verticalSenderArea(252);
   const em = settings.senderSize * 25.4 / 72;
   expect(settings.senderSize).toBe(16);
   expect(draft.senderName).toBe("炁衡物聯科技");

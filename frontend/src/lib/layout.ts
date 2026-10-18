@@ -15,7 +15,7 @@ export function verticalAddressArea(heightMm: number, taiwanese = false) {
 /** Right edge of the sender block (= column start in vertical-rl). Just left of the 33mm centred frame. */
 export const senderAreaStartXMm = 42;
 
-export function verticalSenderArea(widthMm: number, heightMm: number) {
+export function verticalSenderArea(heightMm: number) {
   // Match sender postcode left inset; block fills left corridor up to start X.
   const leftMm = 6;
   // Layout ratios are for the content area below the top pad; nudge down a little.
