@@ -154,7 +154,7 @@ test("block steppers and number inputs have distinct accessible names", () => {
       const name = `${block} ${field}`;
       const input = screen.getByRole("spinbutton", {name}) as HTMLInputElement;
       const initial = Number(input.value);
-      const step = field === t.fontSize ? 0.5 : 1;
+      const step = field === t.fontSize ? 0.5 : 0.1;
       fireEvent.click(screen.getByRole("button", {name: `${name} ${t.increase}`}));
       expect(Number(input.value)).toBe(initial + step);
       fireEvent.click(screen.getByRole("button", {name: `${name} ${t.decrease}`}));
